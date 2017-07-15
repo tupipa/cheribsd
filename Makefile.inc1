@@ -193,6 +193,7 @@ compiler-metadata.mk: .PHONY .META
 
 # Handle external binutils.
 .if defined(CROSS_TOOLCHAIN_PREFIX)
+.error "TOOLCHAIN ${CROSS_TOOLCHAIN_PREFIX}"
 CROSS_BINUTILS_PREFIX?=${CROSS_TOOLCHAIN_PREFIX}
 .endif
 # If we do not have a bootstrap binutils (because the in-tree one does not
@@ -211,10 +212,16 @@ CROSS_BINUTILS_PREFIX=/usr/local/${TARGET_ARCH}-freebsd/bin/
 .endif
 XBINUTILS=	AS AR LD NM OBJCOPY OBJDUMP RANLIB SIZE STRINGS
 .for BINUTIL in ${XBINUTILS}
+# .warning "${CROSS_BINUTILS_PREFIX}${${BINUTIL}}"
 .if defined(CROSS_BINUTILS_PREFIX) && \
     exists(${CROSS_BINUTILS_PREFIX}${${BINUTIL}})
+.info "X${BINUTIL}?=	${CROSS_BINUTILS_PREFIX}${${BINUTIL}}"
 X${BINUTIL}?=	${CROSS_BINUTILS_PREFIX}${${BINUTIL}}
 .else
+.if !exists(${CROSS_BINUTILS_PREFIX}${${BINUTIL}}) && !defined(X${BINUTIL}) && !defined(SYSROOT)
+# For some reason exists() returns false for objcopy although it exists
+# .warning "Missing ${${BINUTIL}}:  ${CROSS_BINUTILS_PREFIX}${${BINUTIL}}"
+.endif
 X${BINUTIL}?=	${${BINUTIL}}
 .endif
 .endfor
@@ -518,7 +525,7 @@ BMAKEENV=	INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		MAKEFLAGS="-m ${.CURDIR}/tools/build/mk ${.MAKEFLAGS}"
 # need to keep this in sync with targets/pseudo/bootstrap-tools/Makefile
 BSARGS= 	DESTDIR= \
-		BOOTSTRAPPING=${OSRELDATE} \
+		BOOTSTRAPPING=${OSRELDATE} CROSSBUILD=${CROSSBUILD} \
 		SSP_CFLAGS= \
 		MK_HTML=no NO_LINT=yes MK_MAN=no \
 		-DNO_PIC MK_PROFILE=no -DNO_SHARED \
@@ -697,8 +704,11 @@ NO_META_IGNORE_HOST_HEADERS=	1
 # allows tracking the oldest osreldate to force rebuilds via
 # META_MODE_BADABI_REVS above.
 host-osreldate.h: # DO NOT ADD /usr/include/osreldate.h here
+.if defined(CROSSBUILD)
 	@cp -f /usr/include/osreldate.h ${.TARGET}
-
+.else
+	@cp -f ${.PARSEDIR}/fake-osreldate.h ${.TARGET}
+.endif
 WMAKE=		${WMAKEENV} ${MAKE} ${WORLD_FLAGS} -f Makefile.inc1 DESTDIR=${WORLDTMP}
 
 .if ${MK_CHERI} != "no"
@@ -906,7 +916,7 @@ _legacy:
 	@echo ">>> stage 1.1: legacy release compatibility shims"
 	@echo "--------------------------------------------------------------"
 .if defined(CROSSBUILD)
-.info "Skipping legacy stage when cross-compiling"
+	@echo "Skipping legacy stage when cross-compiling"
 .else
 	${_+_}cd ${.CURDIR}; ${BMAKE} legacy
 .endif
@@ -916,7 +926,7 @@ _bootstrap-tools:
 	@echo ">>> stage 1.2: bootstrap tools"
 	@echo "--------------------------------------------------------------"
 .if defined(CROSSBUILD)
-.info "Skipping bootstrap tools stage when cross-compiling"
+	@echo "Skipping bootstrap tools stage when cross-compiling"
 .else
 	${_+_}cd ${.CURDIR}; ${BMAKE} bootstrap-tools
 .endif
@@ -945,21 +955,17 @@ _build-tools:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> stage 2.3: build tools"
 	@echo "--------------------------------------------------------------"
-.if defined(CROSSBUILD)
-.info "Skipping build tools stage when cross-compiling"
-.else
 	${_+_}cd ${.CURDIR}; ${TMAKE} build-tools
-.endif
 _cross-tools:
 	@echo
 	@echo "--------------------------------------------------------------"
 	@echo ">>> stage 3: cross tools"
 	@echo "--------------------------------------------------------------"
 	@rm -f ${.OBJDIR}/compiler-metadata.mk
-.if defined(CROSSBUILD)
-.info "Skipping cross tools stage when cross-compiling"
-.else
 	${_+_}cd ${.CURDIR}; ${XMAKE} cross-tools
+.if defined(CROSSBUILD)
+	@echo "Skipping kernel cross tools stage when cross-compiling"
+.else
 	${_+_}cd ${.CURDIR}; ${XMAKE} kernel-tools
 .endif
 _build-metadata:
@@ -969,7 +975,7 @@ _build-metadata:
 	@echo "--------------------------------------------------------------"
 	${_+_}cd ${.CURDIR}; ${WMAKE} compiler-metadata.mk
 .if defined(CROSSBUILD)
-.info "Skipping host-osreldate.h stage when cross-compiling"
+	@echo "Skipping host-osreldate.h stage when cross-compiling"
 .else
 	${_+_}cd ${.CURDIR}; ${WMAKE} host-osreldate.h
 .endif
@@ -1222,7 +1228,7 @@ __installcheck_sh_check: .PHONY
 _zoneinfo=	zic tzsetup
 .endif
 
-ITOOLS=	[ awk cap_mkdb cat chflags chmod chown cmp cp \
+ITOOLS=	[ awk bmake cap_mkdb cat chflags chmod chown cmp cp \
 	date echo egrep find grep id install ${_install-info} \
 	ln make mkdir mtree mv pwd_mkdb \
 	rm sed services_mkdb sh strip sysctl test true uname wc ${_zoneinfo} \
@@ -2009,10 +2015,18 @@ _kerberos5_bootstrap_tools= \
 .ORDER: ${_kerberos5_bootstrap_tools:C/^/${_bt}-/g}
 .endif
 
+.if !defined(CROSSBUILD)
 # r283777 makewhatis(1) replaced with mandoc version which builds a database.
 _libopenbsd?=	lib/libopenbsd
 _makewhatis=	usr.bin/mandoc
 ${_bt}-usr.bin/mandoc: ${_bt}-lib/libopenbsd
+.endif
+
+.if !defined(CROSSBUILD)
+_brandelf=usr.bin/brandelf
+_rpcgen=usr.bin/rpcgen
+_xinstall=usr.bin/xinstall
+.endif
 
 bootstrap-tools: .PHONY
 
@@ -2025,17 +2039,17 @@ bootstrap-tools: .PHONY
     ${_strfile} \
     ${_gperf} \
     ${_dtc} \
-    usr.bin/brandelf \
+    ${_brandelf} \
     ${_cat} \
     ${_kbdcontrol} \
     usr.bin/lorder \
     ${_libopenbsd} \
     ${_makewhatis} \
-    usr.bin/rpcgen \
+    ${_rpcgen} \
     ${_yacc} \
     ${_m4} \
     ${_lex} \
-    usr.bin/xinstall \
+    ${_xinstall} \
     ${_gensnmptree} \
     usr.sbin/config \
     ${_crunchide} \
@@ -2056,7 +2070,7 @@ bootstrap-tools: ${_bt}-${_tool}
 #
 # build-tools: Build special purpose build tools
 #
-.if !defined(NO_SHARE)
+.if !defined(NO_SHARE) && ${MK_SYSCONS} != "no"
 _share=	share/syscons/scrnmaps
 .endif
 
@@ -2069,6 +2083,15 @@ _gcc_tools= gnu/usr.bin/cc/cc_tools
 _rescue=rescue/rescue
 .endif
 
+.if !defined(CROSSBUILD)
+# __packed needs to be defined when (otherwise we get errors)
+_other_bootstrap_tools=usr.bin/mkesdb_static usr.bin/mkcsmapper_static
+.endif
+
+.if ${MK_FILE} != "no"
+_libmagic=lib/libmagic
+.endif
+
 .for _tool in \
     bin/csh \
     bin/sh \
@@ -2078,9 +2101,8 @@ _rescue=rescue/rescue
     ${_rescue} \
     ${_share} \
     usr.bin/awk \
-    lib/libmagic \
-    usr.bin/mkesdb_static \
-    usr.bin/mkcsmapper_static \
+    ${_libmagic} \
+    ${_other_bootstrap_tools} \
     usr.bin/vi/catalog
 build-tools_${_tool}: .PHONY
 	${_+_}@${ECHODIR} "===> ${_tool} (obj,build-tools)"; \
@@ -2116,7 +2138,7 @@ kernel-tools: .PHONY
 .if ${TARGET_ARCH} == "amd64" || ${TARGET_ARCH} == "i386"
 _btxld=		usr.sbin/btxld
 .endif
-.if ${TARGET_ARCH} == "mips64"
+.if ${TARGET_ARCH} == "mips64"  && !defined(CROSSBUILD)
 _cheritest=	lib/libxo \
 		bin/cheritest \
 		bin/cheriabitest
@@ -2170,6 +2192,8 @@ _gcc=		gnu/usr.bin/cc
 _usb_tools=	usr.bin/sysinit
 .endif
 
+
+# TODO:     usr.bin/sed  usr.bin/awk
 cross-tools: .MAKE .PHONY
 .for _tool in \
     ${LOCAL_XTOOL_DIRS} \
