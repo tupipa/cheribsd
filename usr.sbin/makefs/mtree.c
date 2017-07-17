@@ -23,6 +23,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if HAVE_NBTOOL_CONFIG_H
+#include "nbtool_config.h"
+#endif
+
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
@@ -556,8 +560,10 @@ read_mtree_keywords(FILE *fp, fsnode *node)
 				}
 				flset = flclr = 0;
 				if (!strtofflags(&value, &flset, &flclr)) {
+#if !defined(HAVE_STRUCT_STAT_ST_FLAGS) || HAVE_STRUCT_STAT_ST_FLAGS != 0
 					st->st_flags &= ~flclr;
 					st->st_flags |= flset;
+#endif
 				} else
 					error = errno;
 			} else
