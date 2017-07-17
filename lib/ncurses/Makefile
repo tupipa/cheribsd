@@ -1,7 +1,7 @@
 # $FreeBSD$
 
-SUBDIR=	ncurses form menu panel
-#	ncursesw formw menuw panelw
+SUBDIR=	ncurses form menu panel \
+	ncursesw formw menuw panelw
 
 SUBDIR_PARALLEL=
 

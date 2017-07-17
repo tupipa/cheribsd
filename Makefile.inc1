@@ -543,7 +543,7 @@ TMAKE=		MAKEOBJDIRPREFIX=${OBJTREE} \
 		${BMAKEENV} ${MAKE} ${WORLD_FLAGS} -f Makefile.inc1 \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} \
 		DESTDIR= \
-		BOOTSTRAPPING=${OSRELDATE} \
+		BOOTSTRAPPING=${OSRELDATE} CROSSBUILD=${CROSSBUILD} \
 		SSP_CFLAGS= \
 		-DNO_LINT \
 		-DNO_CPU_CFLAGS MK_WARNS=no MK_CTF=no \
@@ -562,7 +562,7 @@ KTMAKEENV=	INSTALL="sh ${.CURDIR}/tools/install.sh" \
 KTMAKE=		TOOLS_PREFIX=${WORLDTMP} MAKEOBJDIRPREFIX=${WORLDTMP} \
 		${KTMAKEENV} ${MAKE} ${WORLD_FLAGS} -f Makefile.inc1 \
 		DESTDIR= \
-		BOOTSTRAPPING=${OSRELDATE} \
+		BOOTSTRAPPING=${OSRELDATE} CROSSBUILD=${CROSSBUILD} \
 		SSP_CFLAGS= \
 		MK_HTML=no -DNO_LINT MK_MAN=no \
 		-DNO_PIC MK_PROFILE=no -DNO_SHARED \
@@ -704,7 +704,7 @@ NO_META_IGNORE_HOST_HEADERS=	1
 # allows tracking the oldest osreldate to force rebuilds via
 # META_MODE_BADABI_REVS above.
 host-osreldate.h: # DO NOT ADD /usr/include/osreldate.h here
-.if defined(CROSSBUILD)
+.if !empty(CROSSBUILD)
 	@cp -f /usr/include/osreldate.h ${.TARGET}
 .else
 	@cp -f ${.PARSEDIR}/fake-osreldate.h ${.TARGET}
@@ -955,17 +955,21 @@ _build-tools:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> stage 2.3: build tools"
 	@echo "--------------------------------------------------------------"
+.if !empty(CROSSBUILD)
+	@echo "Skipping build tools stage when cross-compiling"
+.else
 	${_+_}cd ${.CURDIR}; ${TMAKE} build-tools
+.endif
 _cross-tools:
 	@echo
 	@echo "--------------------------------------------------------------"
 	@echo ">>> stage 3: cross tools"
 	@echo "--------------------------------------------------------------"
 	@rm -f ${.OBJDIR}/compiler-metadata.mk
-	${_+_}cd ${.CURDIR}; ${XMAKE} cross-tools
-.if defined(CROSSBUILD)
+.if !empty(CROSSBUILD)
 	@echo "Skipping kernel cross tools stage when cross-compiling"
 .else
+	${_+_}cd ${.CURDIR}; ${XMAKE} cross-tools
 	${_+_}cd ${.CURDIR}; ${XMAKE} kernel-tools
 .endif
 _build-metadata:
@@ -1030,6 +1034,33 @@ INTERNAL_LIB_DIRS=				\
 	usr.sbin/ntp/libparse
 .endif
 
+_cheri_libs=lib/csu lib/libgcc_eh lib/libcompiler_rt lib/libc \
+	lib/libc_nonshared lib/libgcc_s lib/libthr lib/libz lib/libbz2 \
+	lib/liblzma lib/libexpat secure/lib/libcrypto lib/libsbuf lib/libelf \
+	lib/libkvm lib/ncurses/ncurses lib/ncurses/ncursesw secure/lib/libssl \
+	lib/libmd lib/libutil lib/libprocstat lib/librtld_db cddl/lib/libctf \
+	lib/libkiconv lib/libpam/libpam lib/libcom_err lib/libcrypt
+.if ${MK_KERBEROS} != "no"
+_cheri_libs+=kerberos5/lib/libroken kerberos5/lib/libasn1 kerberos5/lib/libwind \
+	kerberos5/lib/libhx509 kerberos5/lib/libheimbase \
+	kerberos5/lib/libheimipcc kerberos5/lib/libkrb5 
+_libgssapi=lib/libgssapi
+_kerberos5_libdir=kerberos5/lib
+.endif
+_cheri_libs+=lib/libopie lib/libradius lib/libtacplus lib/libypclnt \
+	lib/libldns secure/lib/libssh lib/msun lib/libnv lib/libcheri gnu/lib/libdialog \
+	lib/libfigpar ${_libgssapi} cddl/lib/libnvpair cddl/lib/libumem cddl/lib/libuutil \
+	cddl/lib/libzfs_core cddl/lib/libavl
+.if ${MK_KERBEROS} != "no"
+	kerberos5/lib/libheimntlm
+.endif
+_cheri_libs+=lib/libsqlite3
+.if ${MK_KERBEROS} != "no"
+_cheri_libs+=kerberos5/lib/libhdb
+.endif
+_cheri_libs+=usr.bin/lex/lib lib/libcxxrt lib/libc++ lib ${LOCAL_LIB_DIRS} \
+	cddl/lib gnu/lib secure/lib ${_kerberos5_libdir} ${INTERNAL_INC_DIRS} ${INTERNAL_LIB_DIRS}
+
 buildcheri:
 	@echo
 	@echo "--------------------------------------------------------------"
@@ -1042,10 +1073,10 @@ buildcheri:
 	    MAKEFLAGS="-m ${.CURDIR}/tools/build/mk ${.MAKEFLAGS}" \
 	    MAKEOBJDIRPREFIX=${LIBCHERI_OBJTREE} ${MAKE} SSP_CFLAGS= DESTDIR= \
 	    DIRPRFX=${_dir}/ -DNO_LINT -DNO_CPU_CFLAGS MK_WARNS=no MK_CTF=no \
-	    ${_t}
+	    CROSSBUILD=${CROSSBUILD} ${_t}
 .endfor
 .endfor
-.for _lib in lib/csu lib/libgcc_eh lib/libcompiler_rt lib/libc lib/libc_nonshared lib/libgcc_s lib/libthr lib/libz lib/libbz2 lib/liblzma lib/libexpat secure/lib/libcrypto lib/libsbuf lib/libelf lib/libkvm lib/ncurses/ncurses lib/ncurses/ncursesw secure/lib/libssl lib/libmd lib/libutil lib/libprocstat lib/librtld_db cddl/lib/libctf lib/libkiconv lib/libpam/libpam lib/libcom_err lib/libcrypt kerberos5/lib/libroken kerberos5/lib/libasn1 kerberos5/lib/libwind kerberos5/lib/libhx509 kerberos5/lib/libheimbase kerberos5/lib/libheimipcc kerberos5/lib/libkrb5 lib/libopie lib/libradius lib/libtacplus lib/libypclnt lib/libldns secure/lib/libssh lib/msun lib/libnv lib/libcheri gnu/lib/libdialog lib/libfigpar lib/libgssapi cddl/lib/libnvpair cddl/lib/libumem cddl/lib/libuutil cddl/lib/libzfs_core cddl/lib/libavl kerberos5/lib/libheimntlm lib/libsqlite3 kerberos5/lib/libhdb usr.bin/lex/lib lib/libcxxrt lib/libc++ lib ${LOCAL_LIB_DIRS} cddl/lib gnu/lib secure/lib kerberos5/lib ${INTERNAL_INC_DIRS} ${INTERNAL_LIB_DIRS}
+.for _lib in ${_cheri_libs}
 	${_+_}@${ECHODIR} "===> ${_lib} (obj,all,install)"; \
 		cd ${.CURDIR}/${_lib} && \
 		    ${LIBCHERIWMAKE} DIRPRFX=${_lib}/ obj && \
@@ -1053,7 +1084,7 @@ buildcheri:
 		    ${LIBCHERIWMAKE} MK_TESTS=no DIRPRFX=${_lib}/ install
 .endfor
 .if ${MK_TESTS} == "yes"
-.for _lib in lib/csu lib ${LOCAL_LIB_DIRS} cddl/lib gnu/lib secure/lib kerberos5/lib
+.for _lib in lib/csu lib ${LOCAL_LIB_DIRS} cddl/lib gnu/lib secure/lib ${_kerberos5_libdir}
 		cd ${.CURDIR}/${_lib} && \
 		    ${LIBCHERIWMAKE} DIRPRFX=${_lib}/ all
 .endfor
@@ -2015,14 +2046,14 @@ _kerberos5_bootstrap_tools= \
 .ORDER: ${_kerberos5_bootstrap_tools:C/^/${_bt}-/g}
 .endif
 
-.if !defined(CROSSBUILD)
+.if !empty(CROSSBUILD)
 # r283777 makewhatis(1) replaced with mandoc version which builds a database.
 _libopenbsd?=	lib/libopenbsd
 _makewhatis=	usr.bin/mandoc
 ${_bt}-usr.bin/mandoc: ${_bt}-lib/libopenbsd
 .endif
 
-.if !defined(CROSSBUILD)
+.if !empty(CROSSBUILD)
 _brandelf=usr.bin/brandelf
 _rpcgen=usr.bin/rpcgen
 _xinstall=usr.bin/xinstall
@@ -2083,7 +2114,7 @@ _gcc_tools= gnu/usr.bin/cc/cc_tools
 _rescue=rescue/rescue
 .endif
 
-.if !defined(CROSSBUILD)
+.if !empty(CROSSBUILD)
 # __packed needs to be defined when (otherwise we get errors)
 _other_bootstrap_tools=usr.bin/mkesdb_static usr.bin/mkcsmapper_static
 .endif
@@ -2138,7 +2169,7 @@ kernel-tools: .PHONY
 .if ${TARGET_ARCH} == "amd64" || ${TARGET_ARCH} == "i386"
 _btxld=		usr.sbin/btxld
 .endif
-.if ${TARGET_ARCH} == "mips64"  && !defined(CROSSBUILD)
+.if ${TARGET_ARCH} == "mips64"  && !empty(CROSSBUILD)
 _cheritest=	lib/libxo \
 		bin/cheritest \
 		bin/cheriabitest
