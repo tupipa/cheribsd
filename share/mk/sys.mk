@@ -236,7 +236,7 @@ LDFLAGS		?=
 .if 0
 LDFLAGS		+=	-Wl,--no-warn-mismatch
 .endif
-_LDFLAGS	=	${LDFLAGS:S/-Wl,//g:N-mabi=*}
+_LDFLAGS	=	${LDFLAGS:S/-Wl,//g:N-mabi=*:N-fuse-ld=*}
 
 LINT		?=	lint
 LINTFLAGS	?=	-cghapbx
