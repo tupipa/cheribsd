@@ -22,6 +22,16 @@ struct proc;
 
 struct thread;
 
+#ifdef CPU_CHERI
+#define	CHERI_PADL_(t)	(sizeof (t) > sizeof(register_t) ? \
+		0 : sizeof(register_t))
+#define	CHERI_PADR_(t)	(sizeof (t) > sizeof(register_t ) ? \
+		0 : sizeof(__intcap_t) - (CHERI_PADL_(t) + sizeof(register_t)))
+#else
+#define	CHERI_PADL_(t)	0
+#define	CHERI_PADR_(t)	0
+#endif
+
 #define	PAD_(t)	(sizeof(register_t) <= sizeof(t) ? \
 		0 : sizeof(register_t) - sizeof(t))
 
@@ -29,8 +39,8 @@ struct thread;
 #define	PADL_(t)	0
 #define	PADR_(t)	PAD_(t)
 #else
-#define	PADL_(t)	PAD_(t)
-#define	PADR_(t)	0
+#define	PADL_(t)	(CHERI_PADL_(t) + PAD_(t))
+#define	PADR_(t)	CHERI_PADR_(t)
 #endif
 
 #if !defined(PAD64_REQUIRED) && (defined(__powerpc__) || defined(__mips__))
@@ -38,6 +48,12 @@ struct thread;
 #endif
 struct cheriabi_syscall_args {
 	char number_l_[PADL_(int)]; int number; char number_r_[PADR_(int)];
+};
+struct cheriabi_mount_args {
+	char type_l_[PADL_(const char *__capability)]; const char *__capability type; char type_r_[PADR_(const char *__capability)];
+	char path_l_[PADL_(const char *__capability)]; const char *__capability path; char path_r_[PADR_(const char *__capability)];
+	char flags_l_[PADL_(int)]; int flags; char flags_r_[PADR_(int)];
+	char data_l_[PADL_(void *__capability)]; void *__capability data; char data_r_[PADR_(void *__capability)];
 };
 struct cheriabi_recvmsg_args {
 	char s_l_[PADL_(int)]; int s; char s_r_[PADR_(int)];
@@ -83,6 +99,12 @@ struct cheriabi_writev_args {
 	char iovp_l_[PADL_(struct iovec_c *)]; struct iovec_c * iovp; char iovp_r_[PADR_(struct iovec_c *)];
 	char iovcnt_l_[PADL_(u_int)]; u_int iovcnt; char iovcnt_r_[PADR_(u_int)];
 };
+struct cheriabi_quotactl_args {
+	char path_l_[PADL_(const char *__capability)]; const char *__capability path; char path_r_[PADR_(const char *__capability)];
+	char cmd_l_[PADL_(int)]; int cmd; char cmd_r_[PADR_(int)];
+	char uid_l_[PADL_(int)]; int uid; char uid_r_[PADR_(int)];
+	char arg_l_[PADL_(void *__capability)]; void *__capability arg; char arg_r_[PADR_(void *__capability)];
+};
 struct cheriabi_nlm_syscall_args {
 	char debug_level_l_[PADL_(int)]; int debug_level; char debug_level_r_[PADR_(int)];
 	char grace_period_l_[PADL_(int)]; int grace_period; char grace_period_r_[PADR_(int)];
@@ -91,7 +113,7 @@ struct cheriabi_nlm_syscall_args {
 };
 struct cheriabi_nfssvc_args {
 	char flag_l_[PADL_(int)]; int flag; char flag_r_[PADR_(int)];
-	char argp_l_[PADL_(void *)]; void * argp; char argp_r_[PADR_(void *)];
+	char argp_l_[PADL_(void *__capability)]; void *__capability argp; char argp_r_[PADR_(void *__capability)];
 };
 struct cheriabi_sysarch_args {
 	char op_l_[PADL_(int)]; int op; char op_r_[PADR_(int)];
@@ -206,6 +228,11 @@ struct cheriabi_sendfile_args {
 	char sbytes_l_[PADL_(off_t *)]; off_t * sbytes; char sbytes_r_[PADR_(off_t *)];
 	char flags_l_[PADL_(int)]; int flags; char flags_r_[PADR_(int)];
 };
+struct cheriabi_mac_syscall_args {
+	char policy_l_[PADL_(const char *__capability)]; const char *__capability policy; char policy_r_[PADR_(const char *__capability)];
+	char call_l_[PADL_(int)]; int call; char call_r_[PADR_(int)];
+	char arg_l_[PADL_(void *__capability)]; void *__capability arg; char arg_r_[PADR_(void *__capability)];
+};
 struct cheriabi___mac_get_pid_args {
 	char pid_l_[PADL_(pid_t)]; pid_t pid; char pid_r_[PADR_(pid_t)];
 	char mac_p_l_[PADL_(struct mac_c *)]; struct mac_c * mac_p; char mac_p_r_[PADR_(struct mac_c *)];
@@ -247,6 +274,11 @@ struct cheriabi_thr_create_args {
 	char id_l_[PADL_(long *)]; long * id; char id_r_[PADR_(long *)];
 	char flags_l_[PADL_(int)]; int flags; char flags_r_[PADR_(int)];
 };
+struct cheriabi_auditon_args {
+	char cmd_l_[PADL_(int)]; int cmd; char cmd_r_[PADR_(int)];
+	char data_l_[PADL_(void *__capability)]; void *__capability data; char data_r_[PADR_(void *__capability)];
+	char length_l_[PADL_(u_int)]; u_int length; char length_r_[PADR_(u_int)];
+};
 struct cheriabi_thr_new_args {
 	char param_l_[PADL_(struct thr_param_c *)]; struct thr_param_c * param; char param_r_[PADR_(struct thr_param_c *)];
 	char param_size_l_[PADL_(int)]; int param_size; char param_size_r_[PADR_(int)];
@@ -274,7 +306,7 @@ struct cheriabi_sctp_generic_sendmsg_iov_args {
 	char iov_l_[PADL_(struct iovec_c *)]; struct iovec_c * iov; char iov_r_[PADR_(struct iovec_c *)];
 	char iovlen_l_[PADL_(int)]; int iovlen; char iovlen_r_[PADR_(int)];
 	char to_l_[PADL_(struct sockaddr *)]; struct sockaddr * to; char to_r_[PADR_(struct sockaddr *)];
-	char tolen_l_[PADL_(socklen_t)]; socklen_t tolen; char tolen_r_[PADR_(socklen_t)];
+	char tolen_l_[PADL_(__socklen_t)]; __socklen_t tolen; char tolen_r_[PADR_(__socklen_t)];
 	char sinfo_l_[PADL_(struct sctp_sndrcvinfo *)]; struct sctp_sndrcvinfo * sinfo; char sinfo_r_[PADR_(struct sctp_sndrcvinfo *)];
 	char flags_l_[PADL_(int)]; int flags; char flags_r_[PADR_(int)];
 };
@@ -283,7 +315,7 @@ struct cheriabi_sctp_generic_recvmsg_args {
 	char iov_l_[PADL_(struct iovec_c *)]; struct iovec_c * iov; char iov_r_[PADR_(struct iovec_c *)];
 	char iovlen_l_[PADL_(int)]; int iovlen; char iovlen_r_[PADR_(int)];
 	char from_l_[PADL_(struct sockaddr *)]; struct sockaddr * from; char from_r_[PADR_(struct sockaddr *)];
-	char fromlenaddr_l_[PADL_(socklen_t *)]; socklen_t * fromlenaddr; char fromlenaddr_r_[PADR_(socklen_t *)];
+	char fromlenaddr_l_[PADL_(__socklen_t *)]; __socklen_t * fromlenaddr; char fromlenaddr_r_[PADR_(__socklen_t *)];
 	char sinfo_l_[PADL_(struct sctp_sndrcvinfo *)]; struct sctp_sndrcvinfo * sinfo; char sinfo_r_[PADR_(struct sctp_sndrcvinfo *)];
 	char msg_flags_l_[PADL_(int *)]; int * msg_flags; char msg_flags_r_[PADR_(int *)];
 };
@@ -302,7 +334,7 @@ struct cheriabi_fexecve_args {
 };
 struct cheriabi_openat_args {
 	char fd_l_[PADL_(int)]; int fd; char fd_r_[PADR_(int)];
-	char path_l_[PADL_(const char *)]; const char * path; char path_r_[PADR_(const char *)];
+	char path_l_[PADL_(const char *__capability)]; const char *__capability path; char path_r_[PADR_(const char *__capability)];
 	char flag_l_[PADL_(int)]; int flag; char flag_r_[PADR_(int)];
 	char mode_l_[PADL_(mode_t)]; mode_t mode; char mode_r_[PADR_(mode_t)];
 };
@@ -348,6 +380,7 @@ struct cheriabi_procctl_args {
 #define PAD64_REQUIRED
 #endif
 int	cheriabi_syscall(struct thread *, struct cheriabi_syscall_args *);
+int	cheriabi_mount(struct thread *, struct cheriabi_mount_args *);
 int	cheriabi_recvmsg(struct thread *, struct cheriabi_recvmsg_args *);
 int	cheriabi_sendmsg(struct thread *, struct cheriabi_sendmsg_args *);
 int	cheriabi_sigaltstack(struct thread *, struct cheriabi_sigaltstack_args *);
@@ -357,6 +390,7 @@ int	cheriabi_mprotect(struct thread *, struct cheriabi_mprotect_args *);
 int	cheriabi_madvise(struct thread *, struct cheriabi_madvise_args *);
 int	cheriabi_readv(struct thread *, struct cheriabi_readv_args *);
 int	cheriabi_writev(struct thread *, struct cheriabi_writev_args *);
+int	cheriabi_quotactl(struct thread *, struct cheriabi_quotactl_args *);
 int	cheriabi_nlm_syscall(struct thread *, struct cheriabi_nlm_syscall_args *);
 int	cheriabi_nfssvc(struct thread *, struct cheriabi_nfssvc_args *);
 int	cheriabi_sysarch(struct thread *, struct cheriabi_sysarch_args *);
@@ -384,6 +418,7 @@ int	cheriabi___mac_get_file(struct thread *, struct cheriabi___mac_get_file_args
 int	cheriabi___mac_set_fd(struct thread *, struct cheriabi___mac_set_fd_args *);
 int	cheriabi___mac_set_file(struct thread *, struct cheriabi___mac_set_file_args *);
 int	cheriabi_sendfile(struct thread *, struct cheriabi_sendfile_args *);
+int	cheriabi_mac_syscall(struct thread *, struct cheriabi_mac_syscall_args *);
 int	cheriabi___mac_get_pid(struct thread *, struct cheriabi___mac_get_pid_args *);
 int	cheriabi___mac_get_link(struct thread *, struct cheriabi___mac_get_link_args *);
 int	cheriabi___mac_set_link(struct thread *, struct cheriabi___mac_set_link_args *);
@@ -394,6 +429,7 @@ int	cheriabi_getcontext(struct thread *, struct cheriabi_getcontext_args *);
 int	cheriabi_setcontext(struct thread *, struct cheriabi_setcontext_args *);
 int	cheriabi_swapcontext(struct thread *, struct cheriabi_swapcontext_args *);
 int	cheriabi_thr_create(struct thread *, struct cheriabi_thr_create_args *);
+int	cheriabi_auditon(struct thread *, struct cheriabi_auditon_args *);
 int	cheriabi_thr_new(struct thread *, struct cheriabi_thr_new_args *);
 int	cheriabi_sigqueue(struct thread *, struct cheriabi_sigqueue_args *);
 int	cheriabi_kmq_notify(struct thread *, struct cheriabi_kmq_notify_args *);
@@ -466,6 +502,7 @@ int	cheriabi_procctl(struct thread *, struct cheriabi_procctl_args *);
 #endif /* COMPAT_FREEBSD11 */
 
 #define	CHERIABI_SYS_AUE_cheriabi_syscall	AUE_NULL
+#define	CHERIABI_SYS_AUE_cheriabi_mount	AUE_MOUNT
 #define	CHERIABI_SYS_AUE_cheriabi_recvmsg	AUE_RECVMSG
 #define	CHERIABI_SYS_AUE_cheriabi_sendmsg	AUE_SENDMSG
 #define	CHERIABI_SYS_AUE_cheriabi_sigaltstack	AUE_SIGALTSTACK
@@ -475,6 +512,7 @@ int	cheriabi_procctl(struct thread *, struct cheriabi_procctl_args *);
 #define	CHERIABI_SYS_AUE_cheriabi_madvise	AUE_MADVISE
 #define	CHERIABI_SYS_AUE_cheriabi_readv	AUE_READV
 #define	CHERIABI_SYS_AUE_cheriabi_writev	AUE_WRITEV
+#define	CHERIABI_SYS_AUE_cheriabi_quotactl	AUE_QUOTACTL
 #define	CHERIABI_SYS_AUE_cheriabi_nlm_syscall	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi_nfssvc	AUE_NFS_SVC
 #define	CHERIABI_SYS_AUE_cheriabi_sysarch	AUE_SYSARCH
@@ -502,6 +540,7 @@ int	cheriabi_procctl(struct thread *, struct cheriabi_procctl_args *);
 #define	CHERIABI_SYS_AUE_cheriabi___mac_set_fd	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi___mac_set_file	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi_sendfile	AUE_SENDFILE
+#define	CHERIABI_SYS_AUE_cheriabi_mac_syscall	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi___mac_get_pid	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi___mac_get_link	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi___mac_set_link	AUE_NULL
@@ -512,6 +551,7 @@ int	cheriabi_procctl(struct thread *, struct cheriabi_procctl_args *);
 #define	CHERIABI_SYS_AUE_cheriabi_setcontext	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi_swapcontext	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi_thr_create	AUE_THR_CREATE
+#define	CHERIABI_SYS_AUE_cheriabi_auditon	AUE_AUDITON
 #define	CHERIABI_SYS_AUE_cheriabi_thr_new	AUE_THR_NEW
 #define	CHERIABI_SYS_AUE_cheriabi_sigqueue	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi_kmq_notify	AUE_MQ_NOTIFY

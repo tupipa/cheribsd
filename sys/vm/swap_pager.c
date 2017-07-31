@@ -430,7 +430,7 @@ static daddr_t	swp_pager_getswapspace(int npages);
 static struct swblock **swp_pager_hash(vm_object_t object, vm_pindex_t index);
 static void swp_pager_meta_build(vm_object_t, vm_pindex_t, daddr_t);
 #ifdef CPU_CHERI
-static void cheri_restore_tag(void *);
+static void cheri_restore_tag(void * __capability *);
 static void swp_pager_meta_cheri_get_tags(vm_page_t);
 static void swp_pager_meta_cheri_put_tags(vm_page_t);
 #endif
@@ -1903,34 +1903,39 @@ done:
  *	CSETTAG().
  */
 static void
-cheri_restore_tag(void *cp)
+cheri_restore_tag(void * __capability *cp)
 {
 	size_t base, len, offset, perm, sealed, type;
+	void * __capability cap;
+	void * __capability newcap;
+	void * __capability sealcap;
+
+	cap = *cp;
+
+	base = cheri_getbase(cap);
+	len = cheri_getlen(cap);
+	offset = cheri_getoffset(cap);
+	perm = cheri_getperm(cap);
+	sealed = cheri_getsealed(cap);
+	type = cheri_gettype(cap);
+
+	newcap = cheri_getkdc();
+	newcap = cheri_setoffset(newcap, base);
+	newcap = cheri_csetbounds(newcap, len);
+	newcap = cheri_andperm(newcap, perm);
+	newcap = cheri_incoffset(newcap, offset);
+
+	if (sealed) {
+		sealcap = cheri_setoffset(cheri_getkdc(), type);
+		newcap = cheri_seal(newcap, sealcap);
+	}
 
 	/*
-	 * XXX: This currently assumes precise capabilities, but the order
-	 * has been carefully selected (matching that in
-	 * sys/mips/cheri/cheri.c) to avoid loss of precision in
-	 * anticipation of the addition of a future CSetBounds instruction.
+	 * XXX: Does this guarantee a bit for bit indentical result?
+	 * We should check in the slow path.
 	 */
-	CHERI_CLC(CHERI_CR_CTEMP0, CHERI_CR_KDC, cp, 0);
-	CHERI_CGETBASE(base, CHERI_CR_CTEMP0);
-	CHERI_CGETLEN(len, CHERI_CR_CTEMP0);
-	CHERI_CGETOFFSET(offset, CHERI_CR_CTEMP0);
-	CHERI_CGETPERM(perm, CHERI_CR_CTEMP0);
-	CHERI_CGETSEALED(sealed, CHERI_CR_CTEMP0);
-	CHERI_CGETTYPE(type, CHERI_CR_CTEMP0);
-	CHERI_CSETOFFSET(CHERI_CR_CTEMP0, CHERI_CR_KDC, base);
-	CHERI_CSETBOUNDS(CHERI_CR_CTEMP0, CHERI_CR_CTEMP0, len);
-	CHERI_CANDPERM(CHERI_CR_CTEMP0, CHERI_CR_CTEMP0, perm);
-	CHERI_CINCOFFSET(CHERI_CR_CTEMP0, CHERI_CR_CTEMP0, offset);
-	if (sealed) {
-		CHERI_CMOVE(CHERI_CR_CTEMP1, CHERI_CR_KDC);
-		CHERI_CSETOFFSET(CHERI_CR_CTEMP1, CHERI_CR_CTEMP1, type);
-		CHERI_CSEAL(CHERI_CR_CTEMP0, CHERI_CR_CTEMP0,
-		    CHERI_CR_CTEMP1);
-	}
-	CHERI_CSC(CHERI_CR_CTEMP0, CHERI_CR_KDC, cp, 0);
+
+	*cp = newcap;
 }
 
 /*
@@ -1944,7 +1949,8 @@ swp_pager_meta_cheri_get_tags(vm_page_t page)
 {
 	size_t i, j, swidx;
 	uint64_t t;
-	struct chericap *scan, *p;
+	void * __capability *scan;
+	void * __capability *p;
 	struct swblock *swap;
 
 	/* XXX: Uses details internal to swp_pager_hash. */
