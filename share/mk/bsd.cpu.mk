@@ -319,6 +319,8 @@ CFLAGS+= -mabi=${MIPS_ABI}
 LDFLAGS+= -mabi=${MIPS_ABI}
 .ifdef MIPS_LINK_WITH_LLD
 LDFLAGS+= -fuse-ld=lld -Wl,-z,notext
+.else
+LDFLAGS+= -fuse-ld=bfd
 .endif
 . if ${MACHINE_ARCH:Mmips64*} != ""
 MIPS_ABI?=	64
