@@ -27,8 +27,8 @@
 # The modules link in libpam.  They build the static modules as well.
 SUBDIR+=	libpam modules
 SUBDIR_DEPEND_modules=	libpam
-# SUBDIR+=	static_libpam
-# SUBDIR_DEPEND_static_libpam= modules
+SUBDIR.${MK_STATIC_LIBPAM}+=	static_libpam
+SUBDIR_DEPEND_static_libpam= modules
 SUBDIR_PARALLEL=
 
 .include <bsd.subdir.mk>
