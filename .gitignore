@@ -17,3 +17,7 @@ GTAGS
 ID
 cscope.out
 ?cscope.out
+cscope.files
+cscope.init.sh
+.cscope/
+.vscode/
