@@ -307,7 +307,7 @@ int	kern_mknodat(struct thread *td, int fd, const char * __capability path,
 	    enum uio_seg pathseg, int mode, dev_t dev);
 int	kern_mlock(struct proc *proc, struct ucred *cred, uintptr_t addr,
 	    size_t len);
-int	kern_mmap(struct thread *td, uintptr_t addr, size_t size, int prot,
+int	kern_mmap(struct thread *td, uintptr_t addr, size_t len, int prot,
 	    int flags, int fd, off_t pos);
 int	kern_mmap_req(struct thread *td, const struct mmap_req *mrp);
 int	kern_modfind(struct thread *td, const char * __capability uname);
@@ -601,6 +601,7 @@ int	user_sched_setscheduler(struct thread *td, pid_t pid, int policy,
 int	user_select(struct thread *td, int nd, fd_set * __capability in,
 	    fd_set * __capability ou, fd_set * __capability ex,
 	    struct timeval * __capability utv);
+int	user_sendit(struct thread *td, int s, kmsghdr_t *mp, int flags);
 int	user_sendto(struct thread *td, int s, const char * __capability buf,
 	    size_t len, int flags, const struct sockaddr * __capability to,
 	    socklen_t tolen);

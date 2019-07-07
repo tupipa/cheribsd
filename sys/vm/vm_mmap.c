@@ -120,6 +120,9 @@ SYSCTL_INT(_vm, OID_AUTO, old_mlock, CTLFLAG_RWTUN, &old_mlock, 0,
 static int mincore_mapped = 1;
 SYSCTL_INT(_vm, OID_AUTO, mincore_mapped, CTLFLAG_RWTUN, &mincore_mapped, 0,
     "mincore reports mappings, not residency");
+static int imply_prot_max = 0;
+SYSCTL_INT(_vm, OID_AUTO, imply_prot_max, CTLFLAG_RWTUN, &imply_prot_max, 0,
+    "Imply maximum page permissions in mmap() when none are specified");
 static int log_wxrequests = 0;
 SYSCTL_INT(_vm, OID_AUTO, log_wxrequests, CTLFLAG_RWTUN, &log_wxrequests, 0,
     "Log requests for PROT_WRITE and PROT_EXEC");
@@ -207,12 +210,12 @@ sys_mmap(struct thread *td, struct mmap_args *uap)
 }
 
 int
-kern_mmap(struct thread *td, uintptr_t addr0, size_t size, int prot,
+kern_mmap(struct thread *td, uintptr_t addr0, size_t len, int prot,
     int flags, int fd, off_t pos)
 {
 	struct mmap_req	mr = {
 		.mr_hint = addr0,
-		.mr_size = size,
+		.mr_len = len,
 		.mr_prot = prot,
 		.mr_flags = flags,
 		.mr_fd = fd,
@@ -229,7 +232,7 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 	struct file *fp;
 	off_t pos;
 	vm_offset_t addr_mask = PAGE_MASK;
-	vm_size_t pageoff, size;
+	vm_size_t len, pageoff, size;
 	vm_offset_t addr, max_addr;
 	vm_prot_t cap_maxprot;
 	int align, error, fd, flags, max_prot, prot;
@@ -237,22 +240,38 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 
 	addr = mrp->mr_hint;
 	max_addr = mrp->mr_max_addr;
-	size = mrp->mr_size;
-	max_prot = EXTRACT_PROT_MAX(mrp->mr_prot);
-	prot = EXTRACT_PROT(mrp->mr_prot);
+	len = mrp->mr_len;
+	prot = mrp->mr_prot;
 	flags = mrp->mr_flags;
 	fd = mrp->mr_fd;
 	pos = mrp->mr_pos;
 
-	if ((prot & max_prot) != prot) {
+	if ((prot & ~(_PROT_ALL | PROT_MAX(_PROT_ALL))) != 0) {
+		SYSERRCAUSE(
+		    "%s: invalid bits in prot %x", __func__,
+		    (prot & ~(_PROT_ALL | PROT_MAX(_PROT_ALL))));
+		return (EINVAL);
+	}
+	max_prot = PROT_MAX_EXTRACT(prot);
+	prot = PROT_EXTRACT(prot);
+	if (max_prot != 0 && (max_prot & prot) != prot) {
 		SYSERRCAUSE(
 		    "%s: requested page permissions exceed requesed maximum",
 		    __func__);
-		return (EACCES);
+		return (EINVAL);
 	}
 	if ((prot & (PROT_WRITE | PROT_EXEC)) == (PROT_WRITE | PROT_EXEC) &&
 	    (error = vm_wxcheck(td->td_proc, "mmap")))
 		return (error);
+	/*
+	 * Always honor PROT_MAX if set.  If not, default to all
+	 * permissions unless we're implying maximum permissions.
+	 *
+	 * XXX: should be tunable per process and ABI.
+	 */
+	if (max_prot == 0)
+		max_prot = (imply_prot_max && prot != PROT_NONE) ||
+		    SV_CURPROC_FLAG(SV_CHERI) ? prot : _PROT_ALL;
 
 	vms = td->td_proc->p_vmspace;
 	fp = NULL;
@@ -274,9 +293,9 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 	 * pos.
 	 */
 	if (!SV_CURPROC_FLAG(SV_AOUT)) {
-		if ((size == 0 && curproc->p_osrel >= P_OSREL_MAP_ANON) ||
+		if ((len == 0 && curproc->p_osrel >= P_OSREL_MAP_ANON) ||
 		    ((flags & MAP_ANON) != 0 && (fd != -1 || pos != 0))) {
-			SYSERRCAUSE("%s: size == 0", __func__);
+			SYSERRCAUSE("%s: len == 0", __func__);
 			return (EINVAL);
 		}
 	} else {
@@ -344,9 +363,12 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 	pageoff = (pos & PAGE_MASK);
 	pos -= pageoff;
 
-	/* Adjust size for rounding (on both ends). */
-	size += pageoff;			/* low end... */
-	size = (vm_size_t) round_page(size);	/* hi end */
+	/* Compute size from len by rounding (on both ends). */
+	size = len + pageoff;			/* low end... */
+	size = round_page(size);		/* hi end */
+	/* Check for rounding up to zero. */
+	if (len > size)
+		return (ENOMEM);
 
 	align = flags & MAP_ALIGNMENT_MASK;
 #ifndef CPU_CHERI
@@ -362,14 +384,14 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 	 */
 	if (align == MAP_ALIGNED_CHERI) {
 		flags &= ~MAP_ALIGNMENT_MASK;
-		if (CHERI_ALIGN_SHIFT(size) > PAGE_SHIFT) {
+		if (CHERI_REPRESENTABLE_ALIGNMENT(size) > (1UL << PAGE_SHIFT)) {
 			flags |= MAP_ALIGNED(CHERI_ALIGN_SHIFT(size));
 
-			if (size & CHERI_ALIGN_MASK(size) &&
-			    cheriabi_mmap_precise_bounds) {
+			if (size != CHERI_REPRESENTABLE_LENGTH(size) &&
+			    (cheriabi_mmap_precise_bounds || (flags & MAP_FIXED))) {
 				SYSERRCAUSE("%s: MAP_ALIGNED_CHERI and size "
 				    "(0x%zx) is insufficently rounded (mask "
-				    "0x%llx)", __func__, size,
+				    "0x%lx)", __func__, size,
 				    CHERI_ALIGN_MASK(size));
 				return (ERANGE);
 			}
@@ -380,19 +402,19 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 		align = flags & MAP_ALIGNMENT_MASK;
 	} else if (align == MAP_ALIGNED_CHERI_SEAL) {
 		flags &= ~MAP_ALIGNMENT_MASK;
-		if (CHERI_SEAL_ALIGN_SHIFT(size) > PAGE_SHIFT) {
+		if (CHERI_SEALABLE_ALIGNMENT(size) > (1UL << PAGE_SHIFT)) {
 			flags |= MAP_ALIGNED(CHERI_SEAL_ALIGN_SHIFT(size));
 
-			if (size & CHERI_SEAL_ALIGN_MASK(size) &&
-			    cheriabi_mmap_precise_bounds) {
+			if (size != CHERI_SEALABLE_LENGTH(size) &&
+			    (cheriabi_mmap_precise_bounds || (flags & MAP_FIXED))) {
 				SYSERRCAUSE("%s: MAP_ALIGNED_CHERI_SEAL and "
 				    "size (0x%zx) is insufficently rounded "
-				    "(mask 0x%llx)", __func__, size,
+				    "(mask 0x%lx)", __func__, size,
 				    CHERI_SEAL_ALIGN_MASK(size));
 				return (ERANGE);
 			}
 
-			if (CHERI_ALIGN_MASK(size) != 0)
+			if (CHERI_SEAL_ALIGN_MASK(size) != 0)
 				addr_mask = CHERI_SEAL_ALIGN_MASK(size);
 		}
 		align = flags & MAP_ALIGNMENT_MASK;
@@ -480,7 +502,7 @@ kern_mmap_req(struct thread *td, const struct mmap_req *mrp)
 			addr = round_page((vm_offset_t)vms->vm_daddr +
 			    lim_max(td, RLIMIT_DATA));
 	}
-	if (size == 0) {
+	if (len == 0) {
 		/*
 		 * Return success without mapping anything for old
 		 * binaries that request a page-aligned mapping of
@@ -555,8 +577,8 @@ int
 freebsd6_mmap(struct thread *td, struct freebsd6_mmap_args *uap)
 {
 
-	return (kern_mmap(td, (uintptr_t)uap->addr, 0, uap->len,
-	    PROT_MAX(PROT_ALL) | uap->prot, uap->flags, uap->fd, uap->pos));
+	return (kern_mmap(td, (uintptr_t)uap->addr, 0, uap->len, uap->prot,
+	    uap->flags, uap->fd, uap->pos));
 }
 #endif
 
@@ -608,8 +630,8 @@ ommap(struct thread *td, struct ommap_args *uap)
 		flags |= MAP_PRIVATE;
 	if (uap->flags & OMAP_FIXED)
 		flags |= MAP_FIXED;
-	return (kern_mmap(td, (uintptr_t)uap->addr, 0, uap->len,
-	    PROT_MAX(PROT_ALL) | prot, flags, uap->fd, uap->pos));
+	return (kern_mmap(td, (uintptr_t)uap->addr, 0, uap->len, prot, flags,
+	    uap->fd, uap->pos));
 }
 #endif				/* COMPAT_43 */
 
@@ -773,10 +795,13 @@ kern_mprotect(struct thread *td, uintptr_t addr0, size_t size, int prot)
 {
 	vm_offset_t addr;
 	vm_size_t pageoff;
-	int error;
+	int vm_error, max_prot;
 
 	addr = addr0;
-	prot = (prot & VM_PROT_ALL);
+	if ((prot & ~(_PROT_ALL | PROT_MAX(_PROT_ALL))) != 0)
+		return (EINVAL);
+	max_prot = PROT_MAX_EXTRACT(prot);
+	prot = PROT_EXTRACT(prot);
 	pageoff = (addr & PAGE_MASK);
 	addr -= pageoff;
 	size += pageoff;
@@ -791,11 +816,22 @@ kern_mprotect(struct thread *td, uintptr_t addr0, size_t size, int prot)
 		return (EINVAL);
 
 	if ((prot & (PROT_WRITE | PROT_EXEC)) == (PROT_WRITE | PROT_EXEC) &&
-	    (error = vm_wxcheck(td->td_proc, "mprotect")))
-		return (error);
+	    (vm_error = vm_wxcheck(td->td_proc, "mprotect")))
+		goto out;
 
-	switch (vm_map_protect(&td->td_proc->p_vmspace->vm_map, addr,
-	    addr + size, prot, FALSE)) {
+	vm_error = KERN_SUCCESS;
+	if (max_prot != 0) {
+		if ((max_prot & prot) != prot)
+			return (EINVAL);
+		vm_error = vm_map_protect(&td->td_proc->p_vmspace->vm_map,
+		    addr, addr + size, max_prot, TRUE);
+	}
+	if (vm_error == KERN_SUCCESS)
+		vm_error = vm_map_protect(&td->td_proc->p_vmspace->vm_map,
+		    addr, addr + size, prot, FALSE);
+
+out:
+	switch (vm_error) {
 	case KERN_SUCCESS:
 		return (0);
 	case KERN_PROTECTION_FAILURE:
