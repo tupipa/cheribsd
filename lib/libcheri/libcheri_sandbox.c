@@ -170,10 +170,13 @@ sandbox_program_init(void)
 	size_t cb = sizeof(buf);
 
 	/* XXXBD: do this with RTLD or hypothentical getexecfd(). */
+	//  Lele: kern.proc.pathname.(-1): current processes text file
 	if ((sysctl(mib, 4, buf, &cb, NULL, 0) != -1) && cb > 0) {
 		if ((fd = open(buf, O_RDONLY)) == -1)
 			warn("%s: open %s (from kern.proc.pathname.(-1))",
 			    __func__, buf);
+		warnx("Lelex: %s: open %s (from kern.proc.pathname.(-1))");
+		warn("Lele: %s: open %s (from kern.proc.pathname.(-1))");
 	}
 
 	if (sandbox_parse_ccall_methods(fd, &main_provided_classes,
