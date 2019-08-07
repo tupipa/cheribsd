@@ -504,6 +504,21 @@ extern int print_request;
 extern int track_detect;	
 extern char track_name[];
 
+#define TRACK_HELLO_VAR_DEFINITION \
+{ /* the following defined in ./usr/src/sys/kern/sched_ule.c */ \
+char print_buf[MAX_PRINT_BUF]; \
+long print_size_tmp = 0; \
+long printed_total = 0; \
+int print_buf_full = 0; \
+/* count number of context switches */ \
+int swap_counted = 0; \
+/* count number of calls to PRINT_BUFFER */ \
+int print_request = 0; \
+/* used by TRACK_HELLO debugging, flag current hello proc*/ \
+int track_detect = 0;	\
+char track_name[] = TRACK_HELLO_NAME; \
+}
+
 #define TRACK_HELLO_DETECT(th) \
  if (th && th->td_proc && th->td_proc->p_comm && \
         (!strcmp(th->td_proc->p_comm, track_name))) { \
@@ -570,7 +585,7 @@ extern char track_name[];
       printed_total += print_size_tmp; \
       critical_exit(); \
   } \
-}while(0);
+}while(0)
 
 
 // Test target program and print
@@ -603,7 +618,7 @@ do{\
       printed_total += print_size_tmp; \
   } \
   critical_exit(); \
-}while(0);
+}while(0)
 
 
 // print out the buffer immediately
@@ -823,7 +838,7 @@ do{\
             fsbase_eax__, fsbase_edx__,\
             gsbase_eax__, gsbase_edx__,\
             kgsbase_eax__, kgsbase_edx__);\
-}while(0);
+}while(0)
 
 // print context 
 #define PRINT_CONTEXT \
@@ -831,7 +846,7 @@ do{\
  if(track_detect > TRACK_IS_NOT_TARGET){ \
    DBG_PRINT_CONTEXT \
  }\
-}while(0);
+}while(0)
 
 #else // no TRACK_HELLO
 
