@@ -505,7 +505,7 @@ extern int track_detect;
 extern char track_name[];
 
 #define TRACK_HELLO_VAR_DEFINITION \
-{ /* the following defined in ./usr/src/sys/kern/sched_ule.c */ \
+/* the following defined in ./usr/src/sys/kern/sched_4bsd.c */ \
 char print_buf[MAX_PRINT_BUF]; \
 long print_size_tmp = 0; \
 long printed_total = 0; \
@@ -516,8 +516,8 @@ int swap_counted = 0; \
 int print_request = 0; \
 /* used by TRACK_HELLO debugging, flag current hello proc*/ \
 int track_detect = 0;	\
-char track_name[] = TRACK_HELLO_NAME; \
-}
+char track_name[] = TRACK_HELLO_NAME;
+
 
 #define TRACK_HELLO_DETECT(th) \
  if (th && th->td_proc && th->td_proc->p_comm && \
@@ -683,7 +683,8 @@ do{\
 // Print to buffer regardless of whether the program is hello or not
 #define DBG_PRINT_CONTEXT \
  do{ \
- 	unsigned short gs__; \
+    /* disable them since not mips arch */ \
+    /* unsigned short gs__; \
     unsigned short fs__; \
     unsigned short es__; \
     unsigned short ds__; \
@@ -817,7 +818,7 @@ do{\
                         : "=m" (retaddr__)\
                        );\
 \
-    critical_exit();\
+    critical_exit(); \
     DBG_printf("---[%d]----------------\n"\
             "\tgs: 0x%hx, fs: 0x%hx, es: 0x%hx, ds: 0x%hx\n"\
             "\trsi: 0x%lx, rax: 0x%lx, rbx: 0x%lx, rcx: 0x%lx, rdx: 0x%lx\n"\
@@ -837,14 +838,14 @@ do{\
             rflags__, rsp__, retaddr__,\
             fsbase_eax__, fsbase_edx__,\
             gsbase_eax__, gsbase_edx__,\
-            kgsbase_eax__, kgsbase_edx__);\
+            kgsbase_eax__, kgsbase_edx__); */ \
 }while(0)
 
 // print context 
 #define PRINT_CONTEXT \
 do{\
  if(track_detect > TRACK_IS_NOT_TARGET){ \
-   DBG_PRINT_CONTEXT \
+   DBG_PRINT_CONTEXT; \
  }\
 }while(0)
 

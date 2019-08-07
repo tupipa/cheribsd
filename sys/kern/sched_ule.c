@@ -86,9 +86,6 @@ dtrace_vtime_switch_func_t	dtrace_vtime_switch_func;
 #define	TDQ_LOADNAME_LEN	(sizeof("CPU ") + sizeof(__XSTRING(MAXCPU)) - 1 + sizeof(" load"))
 
 
-// the following defined in ./usr/src/sys/kern/sched_ule.c
-TRACK_HELLO_VAR_DEFINITION;
-
 /*
  * Thread scheduler specific section.  All fields are protected
  * by the thread lock.
