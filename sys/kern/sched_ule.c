@@ -85,6 +85,27 @@ dtrace_vtime_switch_func_t	dtrace_vtime_switch_func;
 #define	TDQ_NAME_LEN	(sizeof("sched lock ") + sizeof(__XSTRING(MAXCPU)))
 #define	TDQ_LOADNAME_LEN	(sizeof("CPU ") + sizeof(__XSTRING(MAXCPU)) - 1 + sizeof(" load"))
 
+
+#ifdef TRACK_HELLO
+
+// the following defined in ./usr/src/sys/kern/sched_ule.c
+char print_buf[MAX_PRINT_BUF];
+long print_size_tmp = 0;
+long printed_total = 0;
+int print_buf_full = 0;
+
+/* count number of context switches */
+int swap_counted = 0;
+
+/* count number of calls to PRINT_BUFFER */
+int print_request = 0;
+
+/* used by TRACK_HELLO debugging, flag current hello proc*/
+int track_detect = 0;	
+char track_name[] = TRACK_HELLO_NAME;
+
+#endif // TRACK_HELLO
+
 /*
  * Thread scheduler specific section.  All fields are protected
  * by the thread lock.
