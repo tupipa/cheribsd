@@ -477,7 +477,7 @@ void	config_intrhook_oneshot(ich_func_t _func, void *_arg);
 #define MAX_PRINT_BUF (4*1024*1024) //1024*1024-6
 
 
-#define TRACK_HELLO_NAME "hello"
+#define TRACK_HELLO_NAME "cheriabitest"
 //#define TRACK_HELLO_NAME "sh"
 
 #define TRACK_IS_NOT_TARGET 1  // 0
