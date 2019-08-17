@@ -175,8 +175,8 @@ sandbox_program_init(void)
 		if ((fd = open(buf, O_RDONLY)) == -1)
 			warn("%s: open %s (from kern.proc.pathname.(-1))",
 			    __func__, buf);
-		//warnx("Lelex: %s: open %s (from kern.proc.pathname.(-1))");
-		//warn("Lele: %s: open %s (from kern.proc.pathname.(-1))");
+		//warnx("Lelex: %s: open %s (from kern.proc.pathname.(-1))"); // those two will cause cheriabitest to crash on first test
+		//warn("Lele: %s: open %s (from kern.proc.pathname.(-1))"); //those two will cause cheriabitest to crash on first test
 	}
 
 	if (sandbox_parse_ccall_methods(fd, &main_provided_classes,
