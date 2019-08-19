@@ -24,13 +24,23 @@
 #define TRACK_HELLO_NAME "cheriabitest"
 //#define TRACK_HELLO_NAME "sh"
 
-#define TRACK_IS_NOT_TARGET 1  // 0
+
+// flag current process is not target
+#define TRACK_IS_NOT_TARGET 1  
+// 2 and 3 only in effective when using TRACK_HELLO_DETECT2(old, new) to detect
 // flag cpu is switched from hello to another process during context switch
-#define TRACK_IS_FROM_HELLO 2 // 1
+#define TRACK_IS_FROM_HELLO 2
 // flag cpu is switched to hello from another process during context switch
-#define TRACK_IS_TO_HELLO 3  // 2
+#define TRACK_IS_TO_HELLO 3
 // flag cpu is currently running the hello process
-#define TRACK_IS_HELLO 4 // 3
+#define TRACK_IS_HELLO 4
+
+
+// set to 0 to track all processes; 
+// set to 1 to track all switches related to target
+// set to 2 to track only switch from target to another one
+// set to 3 to track all states when target is running.
+#define CUR_TRACK_LEVEL 0  // 1 // 2 // 3
 
 // the following defined in ./usr/src/sys/kern/sched_ule.c
 extern char print_buf[MAX_PRINT_BUF];
@@ -59,7 +69,7 @@ int swap_counted = 0; \
 /* count number of calls to PRINT_BUFFER */ \
 int print_request = 0; \
 /* used by TRACK_HELLO debugging, flag current hello proc*/ \
-int track_detect = 0;	\
+int track_detect = TRACK_IS_NOT_TARGET;	\
 char track_name[] = TRACK_HELLO_NAME;
 
 
@@ -136,7 +146,7 @@ char track_name[] = TRACK_HELLO_NAME;
 #define BUFFER_WRITE(fmt, ...) \
 do{\
   critical_enter(); \
-	if (track_detect > TRACK_IS_NOT_TARGET && !print_buf_full){ \
+	if (track_detect > CUR_TRACK_LEVEL && !print_buf_full){ \
       print_size_tmp = snprintf(print_buf + printed_total, \
         MAX_PRINT_BUF - printed_total,("[%s in %s:%d]: " fmt), \
         __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__); \
@@ -151,7 +161,7 @@ do{\
       }\
       printed_total += print_size_tmp; \
        \
-  }else if (track_detect > TRACK_IS_NOT_TARGET && print_buf_full){\
+  }else if (track_detect > CUR_TRACK_LEVEL && print_buf_full){\
       /* if buffer is full, then just get the size increase it to printed_total. Now printed_total is used for total size of strings requested to print, including those not printed out.*/\
       print_size_tmp = snprintf(NULL, 0,("[%s in %s:%d]: " fmt), \
         __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__); \
@@ -194,7 +204,7 @@ do{\
 // 1. target program has been found, and
 // 2. the buffer is full, or the requests/switches > max & buffer not empty.
 #define PRINT_BUFFER \
-  if (track_detect > TRACK_IS_NOT_TARGET && \
+  if (track_detect > CUR_TRACK_LEVEL && \
       (print_buf_full || swap_counted >= WAIT_INTERVAL || \
        print_request >= PRINT_BUF_REQUEST) && \
       printed_total){ \
@@ -212,7 +222,7 @@ do{\
     swap_counted = 0; \
     print_request = 0; \
     critical_exit(); \
-  } else if (track_detect > TRACK_IS_NOT_TARGET) { \
+  } else if (track_detect > CUR_TRACK_LEVEL) { \
     critical_enter(); \
     print_request ++ ; \
     critical_exit(); \
@@ -388,7 +398,7 @@ do{\
 // print context 
 #define PRINT_CONTEXT \
 do{\
- if(track_detect > TRACK_IS_NOT_TARGET){ \
+ if(track_detect > CUR_TRACK_LEVEL){ \
    DBG_PRINT_CONTEXT; \
  }\
 }while(0)
