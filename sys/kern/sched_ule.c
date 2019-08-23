@@ -85,6 +85,7 @@ dtrace_vtime_switch_func_t	dtrace_vtime_switch_func;
 #define	TDQ_NAME_LEN	(sizeof("sched lock ") + sizeof(__XSTRING(MAXCPU)))
 #define	TDQ_LOADNAME_LEN	(sizeof("CPU ") + sizeof(__XSTRING(MAXCPU)) - 1 + sizeof(" load"))
 
+
 /*
  * Thread scheduler specific section.  All fields are protected
  * by the thread lock.

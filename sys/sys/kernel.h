@@ -448,4 +448,16 @@ int	config_intrhook_establish(struct intr_config_hook *hook);
 void	config_intrhook_disestablish(struct intr_config_hook *hook);
 void	config_intrhook_oneshot(ich_func_t _func, void *_arg);
 
+// Lele: Debugging Prints
+// To enable debug: define TRACK_HELLO
+// To disable: undefine TRACK_HELLO here.
+// * use 'hello' process means the target process to monitor
+// * process is recognized by its string name, defined by TRACK_HELLO_NAME
+#ifndef TRACK_HELLO
+#define TRACK_HELLO
+#endif
+
+
+#include "kernel_debug.h"
+
 #endif /* !_SYS_KERNEL_H_*/

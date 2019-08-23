@@ -739,6 +739,12 @@ interpret:
 	/* reset caught signals */
 	execsigs(p);
 
+#ifdef TRACK_HELLO
+	// save the old name of process
+	char oldname__[MAXCOMLEN + 1];
+	bcopy(p->p_comm, oldname__, MAXCOMLEN);
+#endif // TRACK_HELLO
+
 	/* name this process - nameiexec(p, ndp) */
 	bzero(p->p_comm, sizeof(p->p_comm));
 	if (args->fname)
@@ -750,6 +756,16 @@ interpret:
 #ifdef KTR
 	sched_clear_tdname(td);
 #endif
+
+#ifdef TRACK_HELLO
+	TRACK_HELLO_DETECT_PROC(p);
+	BUFFER_WRITE("process just got named as %s from old name %s\n",p->p_comm, oldname__);
+	PRINT_CONTEXT;
+	/* Lele: if run ls, then print buffer out immediately if any*/
+    if (!strcmp("ls", p->p_comm)){ 
+        PRINT_BUFFER_IM; 
+    }
+#endif // TRACK_HELLO
 
 	/*
 	 * mark as execed, wakeup the process that vforked (if any) and tell

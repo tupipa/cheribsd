@@ -86,6 +86,10 @@ dtrace_vtime_switch_func_t	dtrace_vtime_switch_func;
 
 #define	TS_NAME_LEN (MAXCOMLEN + sizeof(" td ") + sizeof(__XSTRING(UINT_MAX)))
 
+
+// the following defined in ./usr/src/sys/kern/sched_4bsd.c
+TRACK_HELLO_VAR_DEFINITION;
+
 /*
  * The schedulable entity that runs a context.
  * This is  an extension to the thread structure and is tailored to
