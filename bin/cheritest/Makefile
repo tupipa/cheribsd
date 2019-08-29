@@ -1,5 +1,9 @@
 # $FreeBSD$
 
+# Lele: -save-temps to see assembly files
+# This will make clang crash. Why?
+# CFLAGS+= -save-temps=obj
+
 PROG?=	cheritest
 SRCS=	cheritest.c
 
