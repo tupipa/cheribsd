@@ -21,3 +21,4 @@ cscope.files
 cscope.init.sh
 .cscope/
 .vscode/
+*.swp
