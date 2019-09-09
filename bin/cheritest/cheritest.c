@@ -1043,7 +1043,7 @@ static const struct cheri_test cheri_tests[] = {
 	  .ct_check_xfail = xfail_swap_required},
 
 #ifdef CHERI_LIBCHERI_TESTS
-#if 0
+#if 1
 	/*
 	 * Simple CCall/CReturn tests that sometimes generate signals.
 	 */
