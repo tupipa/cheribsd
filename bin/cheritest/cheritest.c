@@ -2453,7 +2453,7 @@ main(int argc, char *argv[])
 	cheri_xfailed_tests = sl_init();
 	/* Run the actual tests. */
 #ifdef CHERI_LIBCHERI_TESTS
-#if 0
+#if 1
 	cheritest_ccall_setup();
 #endif
 	if (!unsandboxed_tests_only) {
