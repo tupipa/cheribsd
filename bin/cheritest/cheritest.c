@@ -111,6 +111,9 @@
 #define	PROT_CHERI_LOCALRET		0
 #endif /* SIGPROT */
 
+/* LLM: variable definition for debugging */
+TRACK_HELLO_VAR_DEFINITION
+
 static const struct cheri_test cheri_tests[] = {
 	/*
 	 * Exercise CHERI functions without an expectation of a signal.

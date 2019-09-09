@@ -60,6 +60,8 @@
 	CHERI_CAP_PRINT(cap);						\
 } while (0)
 
+#include "cheritest_debug.h"
+
 /*
  * Shared memory interface between tests and the test controller process.
  */
