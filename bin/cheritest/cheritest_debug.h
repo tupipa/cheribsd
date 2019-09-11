@@ -1,7 +1,15 @@
 #ifndef CHERITEST_DEBUG_H
 #define CHERITEST_DEBUG_H
 
+
+#define TRACK_HELLO
+
+
 #ifdef TRACK_HELLO
+
+/* define empty func for compatibility */
+#define critical_enter() do{}while(0)
+#define critical_exit() do{}while(0)
 
 #define NO_PRINT_BUFFER
 
