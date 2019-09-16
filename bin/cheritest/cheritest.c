@@ -2258,7 +2258,7 @@ pass:
 	close(pipefd_stdout[0]);
 	xo_close_instance("test");
 	xo_flush();
-	BUFFER_WRITE_IM;
+	//BUFFER_WRITE_IM;
 	return;
 
 fail:
@@ -2284,7 +2284,7 @@ fail:
 	xo_flush();
 	close(pipefd_stdin[1]);
 	close(pipefd_stdout[0]);
-	BUFFER_WRITE_IM;
+	//BUFFER_WRITE_IM;
 }
 
 static void

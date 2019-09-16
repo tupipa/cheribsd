@@ -2,7 +2,7 @@
 #define CHERITEST_DEBUG_H
 
 
-#define TRACK_HELLO
+//#define TRACK_HELLO
 
 
 #ifdef TRACK_HELLO
@@ -418,6 +418,9 @@ do{\
 
 // nop for all printings
 #define TRACK_HELLO_NOP
+
+
+#define TRACK_HELLO_VAR_DEFINITION TRACK_HELLO_NOP
 
 #define TRACK_HELLO_DETECT(th) TRACK_HELLO_NOP
  
