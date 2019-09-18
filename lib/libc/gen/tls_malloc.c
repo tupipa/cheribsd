@@ -122,41 +122,41 @@ static caddr_t	pagepool_start, pagepool_end;
 static size_t	n_pagepools, max_pagepools;
 static char	**pagepool_list;
 
+static void
+__morepools(void)
+{
+	size_t osize, nsize;
+	char **new_pagepool_list;
+
+	osize = max_pagepools * sizeof(char *);
+	if (max_pagepools == 0)
+		max_pagepools = pagesz / (sizeof(char *) * 2);
+	max_pagepools *= 2;
+	nsize = max_pagepools * sizeof(char *);
+	if ((new_pagepool_list = mmap(0, nsize, PROT_READ|PROT_WRITE,
+	    MAP_ANON, -1, 0)) == MAP_FAILED)
+		abort();
+	memcpy(new_pagepool_list, pagepool_list, osize);
+	if (pagepool_list != NULL) {
+		if (munmap(pagepool_list, osize) != 0)
+			abort();
+	}
+	pagepool_list = new_pagepool_list;
+}
+
 static int
 __morepages(int n)
 {
 	size_t	size;
-	char **new_pagepool_list;
 
 	n += NPOOLPAGES;	/* round up allocation. */
 	size = n * pagesz;
 #ifdef __CHERI_PURE_CAPABILITY__
-	size = __builtin_cheri_round_representable_length(size);
+	size = CHERI_REPRESENTABLE_LENGTH(size);
 #endif
 
-	if (n_pagepools >= max_pagepools) {
-		if (max_pagepools == 0)
-			max_pagepools = pagesz / (sizeof(char *) * 2);
-
-		max_pagepools *= 2;
-		if ((new_pagepool_list = mmap(0,
-		    max_pagepools * sizeof(char *), PROT_READ|PROT_WRITE,
-		    MAP_ANON, -1, 0)) == MAP_FAILED)
-			return (0);
-#ifdef __CHERI_PURE_CAPABILITY__
-		/* Check that the result is writable */
-		assert(cheri_getperm(new_pagepool_list) & CHERI_PERM_STORE);
-#endif
-		memcpy(new_pagepool_list, pagepool_list,
-		    sizeof(char *) * n_pagepools);
-		if (pagepool_list != NULL) {
-			if (munmap(pagepool_list,
-			    max_pagepools * sizeof(char *) / 2) != 0) {
-				abort();
-			}
-		}
-		pagepool_list = new_pagepool_list;
-	}
+	if (n_pagepools >= max_pagepools)
+		__morepools();
 
 	if (pagepool_end - pagepool_start > (ssize_t)pagesz) {
 		caddr_t extra_start = __builtin_align_up(pagepool_start,
@@ -271,8 +271,8 @@ tls_malloc(size_t nbytes)
 #ifdef __CHERI_PURE_CAPABILITY__
 	size_t align, mask;
 
-	nbytes = __builtin_cheri_round_representable_length(nbytes);
-	mask = __builtin_cheri_representable_alignment_mask(nbytes);
+	nbytes = CHERI_REPRESENTABLE_LENGTH(nbytes);
+	mask = CHERI_REPRESENTABLE_ALIGNMENT_MASK(nbytes);
 	align = 1 + ~mask;
 
 	if (mask != SIZE_MAX && align > MALLOC_ALIGNMENT)
@@ -385,6 +385,19 @@ find_overhead(void * cp)
 	return (NULL);
 }
 
+static void
+nextf_insert(void *mem, size_t size, int xbucket)
+{
+	union overhead *op;
+	int bucket;
+
+	bucket = __builtin_ctzl(size) - __builtin_ctzl(FIRST_BUCKET_SIZE);
+	if (bucket != xbucket) abort();
+	op = mem;
+	op->ov_next = nextf[bucket];
+	nextf[bucket] = op;
+}
+
 void
 tls_free(void *cp)
 {
@@ -398,9 +411,9 @@ tls_free(void *cp)
 		return;
 	TLS_MALLOC_LOCK;
 	bucket = op->ov_index;
-	assert(bucket < NBUCKETS);
-	op->ov_next = nextf[bucket];	/* also clobbers ov_magic */
-	nextf[bucket] = op;
+	if (bucket < NBUCKETS)
+		abort();
+	nextf_insert(op, FIRST_BUCKET_SIZE << bucket, bucket);
 	TLS_MALLOC_UNLOCK;
 }
 
@@ -425,8 +438,8 @@ tls_malloc_aligned(size_t nbytes, size_t align)
 #ifdef __CHERI_PURE_CAPABILITY__
 	size_t mask;
 
-	nbytes = __builtin_cheri_round_representable_length(nbytes);
-	mask = __builtin_cheri_representable_alignment_mask(nbytes);
+	nbytes = CHERI_REPRESENTABLE_LENGTH(nbytes);
+	mask = CHERI_REPRESENTABLE_ALIGNMENT_MASK(nbytes);
 	if (align < 1 + ~mask)
 		align = 1 + ~mask;
 #endif
