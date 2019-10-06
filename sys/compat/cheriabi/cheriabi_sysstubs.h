@@ -19,8 +19,8 @@ struct __ucontext;
 struct __wrusage;
 struct acl;
 struct aiocb;
-struct auditinfo;
 struct auditinfo_addr;
+struct auditinfo;
 struct ffclock_estimate;
 struct fhandle;
 struct freebsd11_stat;
@@ -30,15 +30,15 @@ struct iovec;
 struct itimerspec;
 struct itimerval;
 struct jail;
-struct kevent;
 struct kevent_freebsd11;
+struct kevent;
 struct kld_file_stat;
 struct mac;
 struct module_stat;
 struct mq_attr;
 struct msghdr;
-struct msqid_ds;
 struct msqid_ds_old;
+struct msqid_ds;
 struct nstat;
 struct ntptimeval;
 struct oaiocb;
@@ -57,8 +57,8 @@ struct sched_param;
 struct sctp_sndrcvinfo;
 struct sembuf;
 struct sf_hdtr;
-struct shmid_ds;
 struct shmid_ds_old;
+struct shmid_ds;
 struct sigaction;
 struct sigaltstack;
 struct sigevent;
@@ -75,8 +75,8 @@ struct timex;
 struct timezone;
 struct utsname;
 struct uuid;
-union semun;
 union semun_old;
+union semun;
 SYS_STUB(2, int, fork,
     /* _protoargs */ (void),
     /* _protoargs_chk */ (int *retp , int * __capability stub_errno),
@@ -3707,5 +3707,15 @@ SYS_STUB(568, int, funlinkat,
     /* _callargs_chk */ (&ret, stub_errno, dfd, path, fd, flag),
     /* _callargs_err */ (&errno, dfd, (const char * )path, fd, flag),
     /* _localcheck */ {if (!(cheri_getperm(path) & CHERI_PERM_GLOBAL)) {errno = EPROT; return ((int)-1);} }
+)
+
+SYS_STUB(569, ssize_t, copy_file_range,
+    /* _protoargs */ (int infd, off_t *  inoffp, int outfd, off_t *  outoffp, size_t len, unsigned int flags),
+    /* _protoargs_chk */ (ssize_t *retp , int * __capability stub_errno, int infd, off_t * __capability   inoffp, int outfd, off_t * __capability   outoffp, size_t len, unsigned int flags),
+    /* _protoargs_err */ (int * __capability stub_errno, int infd, off_t * __capability   inoffp, int outfd, off_t * __capability   outoffp, size_t len, unsigned int flags),
+    /* _callargs */ (infd, (__cheri_fromcap off_t * )inoffp, outfd, (__cheri_fromcap off_t * )outoffp, len, flags),
+    /* _callargs_chk */ (&ret, stub_errno, infd, inoffp, outfd, outoffp, len, flags),
+    /* _callargs_err */ (&errno, infd, (off_t * )inoffp, outfd, (off_t * )outoffp, len, flags),
+    /* _localcheck */ {if (!(cheri_getperm(inoffp) & CHERI_PERM_GLOBAL)) {errno = EPROT; return ((ssize_t)-1);} if (!(cheri_getperm(outoffp) & CHERI_PERM_GLOBAL)) {errno = EPROT; return ((ssize_t)-1);} }
 )
 

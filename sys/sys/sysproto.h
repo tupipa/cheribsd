@@ -29,7 +29,7 @@ struct thread;
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define	PADL_(t)	0
 #define	PADR_(t)	PAD_(t)
-#elif _MIPS_SZCAP == 256
+#elif defined(_MIPS_SZCAP) && _MIPS_SZCAP == 256
 /*
  * For non-capability arguments, the syscall argument is stored in the
  * cursor field in the second word.
@@ -37,7 +37,7 @@ struct thread;
 #define	PADL_(t)	(sizeof (t) > sizeof(register_t) ? \
 		0 : 2 * sizeof(register_t) - sizeof(t))
 #define	PADR_(t)	(sizeof (t) > sizeof(register_t) ? \
-		0 : 2 * sizeof(register_t)))
+		0 : 2 * sizeof(register_t))
 #else
 #define	PADL_(t)	PAD_(t)
 #define	PADR_(t)	0
@@ -1811,6 +1811,14 @@ struct funlinkat_args {
 	char fd_l_[PADL_(int)]; int fd; char fd_r_[PADR_(int)];
 	char flag_l_[PADL_(int)]; int flag; char flag_r_[PADR_(int)];
 };
+struct copy_file_range_args {
+	char infd_l_[PADL_(int)]; int infd; char infd_r_[PADR_(int)];
+	char inoffp_l_[PADL_(off_t *)]; off_t * inoffp; char inoffp_r_[PADR_(off_t *)];
+	char outfd_l_[PADL_(int)]; int outfd; char outfd_r_[PADR_(int)];
+	char outoffp_l_[PADL_(off_t *)]; off_t * outoffp; char outoffp_r_[PADR_(off_t *)];
+	char len_l_[PADL_(size_t)]; size_t len; char len_r_[PADR_(size_t)];
+	char flags_l_[PADL_(unsigned int)]; unsigned int flags; char flags_r_[PADR_(unsigned int)];
+};
 int	nosys(struct thread *, struct nosys_args *);
 void	sys_sys_exit(struct thread *, struct sys_exit_args *);
 int	sys_fork(struct thread *, struct fork_args *);
@@ -2197,6 +2205,7 @@ int	sys_fhlink(struct thread *, struct fhlink_args *);
 int	sys_fhlinkat(struct thread *, struct fhlinkat_args *);
 int	sys_fhreadlink(struct thread *, struct fhreadlink_args *);
 int	sys_funlinkat(struct thread *, struct funlinkat_args *);
+int	sys_copy_file_range(struct thread *, struct copy_file_range_args *);
 
 #ifdef COMPAT_43
 
@@ -3105,6 +3114,7 @@ int	freebsd11_mknodat(struct thread *, struct freebsd11_mknodat_args *);
 #define	SYS_AUE_fhlinkat	AUE_NULL
 #define	SYS_AUE_fhreadlink	AUE_NULL
 #define	SYS_AUE_funlinkat	AUE_UNLINKAT
+#define	SYS_AUE_copy_file_range	AUE_NULL
 
 #undef PAD_
 #undef PADL_

@@ -29,7 +29,7 @@ struct thread;
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define	PADL_(t)	0
 #define	PADR_(t)	PAD_(t)
-#elif _MIPS_SZCAP == 256
+#elif defined(_MIPS_SZCAP) && _MIPS_SZCAP == 256
 /*
  * For non-capability arguments, the syscall argument is stored in the
  * cursor field in the second word.
@@ -37,7 +37,7 @@ struct thread;
 #define	PADL_(t)	(sizeof (t) > sizeof(register_t) ? \
 		0 : 2 * sizeof(register_t) - sizeof(t))
 #define	PADR_(t)	(sizeof (t) > sizeof(register_t) ? \
-		0 : 2 * sizeof(register_t)))
+		0 : 2 * sizeof(register_t))
 #else
 #define	PADL_(t)	PAD_(t)
 #define	PADR_(t)	0
@@ -1442,6 +1442,14 @@ struct cheriabi_funlinkat_args {
 	char fd_l_[PADL_(int)]; int fd; char fd_r_[PADR_(int)];
 	char flag_l_[PADL_(int)]; int flag; char flag_r_[PADR_(int)];
 };
+struct cheriabi_copy_file_range_args {
+	char infd_l_[PADL_(int)]; int infd; char infd_r_[PADR_(int)];
+	char inoffp_l_[PADL_(off_t * __capability)]; off_t * __capability inoffp; char inoffp_r_[PADR_(off_t * __capability)];
+	char outfd_l_[PADL_(int)]; int outfd; char outfd_r_[PADR_(int)];
+	char outoffp_l_[PADL_(off_t * __capability)]; off_t * __capability outoffp; char outoffp_r_[PADR_(off_t * __capability)];
+	char len_l_[PADL_(size_t)]; size_t len; char len_r_[PADR_(size_t)];
+	char flags_l_[PADL_(unsigned int)]; unsigned int flags; char flags_r_[PADR_(unsigned int)];
+};
 int	cheriabi_read(struct thread *, struct cheriabi_read_args *);
 int	cheriabi_write(struct thread *, struct cheriabi_write_args *);
 int	cheriabi_open(struct thread *, struct cheriabi_open_args *);
@@ -1732,6 +1740,7 @@ int	cheriabi_fhlink(struct thread *, struct cheriabi_fhlink_args *);
 int	cheriabi_fhlinkat(struct thread *, struct cheriabi_fhlinkat_args *);
 int	cheriabi_fhreadlink(struct thread *, struct cheriabi_fhreadlink_args *);
 int	cheriabi_funlinkat(struct thread *, struct cheriabi_funlinkat_args *);
+int	cheriabi_copy_file_range(struct thread *, struct cheriabi_copy_file_range_args *);
 
 #ifdef COMPAT_43
 
@@ -2058,6 +2067,7 @@ int	cheriabi_funlinkat(struct thread *, struct cheriabi_funlinkat_args *);
 #define	CHERIABI_SYS_AUE_cheriabi_fhlinkat	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi_fhreadlink	AUE_NULL
 #define	CHERIABI_SYS_AUE_cheriabi_funlinkat	AUE_UNLINKAT
+#define	CHERIABI_SYS_AUE_cheriabi_copy_file_range	AUE_NULL
 
 #undef PAD_
 #undef PADL_
