@@ -179,7 +179,7 @@ extattr_set_vp(struct vnode *vp, int attrnamespace, const char *attrname,
 {
 	struct mount *mp;
 	struct uio auio;
-	kiovec_t aiov;
+	struct iovec aiov;
 	ssize_t cnt;
 	int error;
 
@@ -348,7 +348,7 @@ extattr_get_vp(struct vnode *vp, int attrnamespace, const char *attrname,
     void * __capability data, size_t nbytes, struct thread *td)
 {
 	struct uio auio, *auiop;
-	kiovec_t aiov;
+	struct iovec aiov;
 	ssize_t cnt;
 	size_t size, *sizep;
 	int error;
@@ -666,7 +666,7 @@ extattr_list_vp(struct vnode *vp, int attrnamespace, void * __capability data,
 {
 	struct uio auio, *auiop;
 	size_t size, *sizep;
-	kiovec_t aiov;
+	struct iovec aiov;
 	ssize_t cnt;
 	int error;
 
@@ -805,11 +805,10 @@ kern_extattr_list_path(struct thread *td, const char * __capability path,
 }
 // CHERI CHANGES START
 // {
-//   "updated": 20181114,
+//   "updated": 20191025,
 //   "target_type": "kernel",
 //   "changes": [
 //     "iovec-macros",
-//     "kiovec_t",
 //     "user_capabilities"
 //   ]
 // }

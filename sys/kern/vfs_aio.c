@@ -768,7 +768,7 @@ aio_process_rw(struct kaiocb *job)
 	kaiocb_t *cb;
 	struct file *fp;
 	struct uio auio;
-	kiovec_t aiov;
+	struct iovec aiov;
 	ssize_t cnt;
 	long msgsnd_st, msgsnd_end;
 	long msgrcv_st, msgrcv_end;
@@ -3889,12 +3889,11 @@ cheriabi_lio_listio(struct thread *td, struct cheriabi_lio_listio_args *uap)
 #endif /* COMPAT_CHERIABI */
 // CHERI CHANGES START
 // {
-//   "updated": 20181203,
+//   "updated": 20191025,
 //   "target_type": "kernel",
 //   "changes": [
 //     "iovec-macros",
 //     "kernel_sig_types",
-//     "kiovec_t",
 //     "user_capabilities"
 //   ]
 // }

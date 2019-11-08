@@ -201,7 +201,7 @@ int
 user_read(struct thread *td, int fd, void * __capability buf, size_t nbyte)
 {
 	struct uio auio;
-	kiovec_t aiov;
+	struct iovec aiov;
 
 	if (nbyte > IOSIZE_MAX)
 		return (EINVAL);
@@ -238,7 +238,7 @@ kern_pread(struct thread *td, int fd, void * __capability buf, size_t nbyte,
     off_t offset)
 {
 	struct uio auio;
-	kiovec_t aiov;
+	struct iovec aiov;
 
 	if (nbyte > IOSIZE_MAX)
 		return (EINVAL);
@@ -425,7 +425,7 @@ kern_write(struct thread *td, int fd, const void * __capability buf,
     size_t nbyte)
 {
 	struct uio auio;
-	kiovec_t aiov;
+	struct iovec aiov;
 	int error;
 
 	if (nbyte > IOSIZE_MAX)
@@ -464,7 +464,7 @@ kern_pwrite(struct thread *td, int fd, const void * __capability buf,
     size_t nbyte, off_t offset)
 {
 	struct uio auio;
-	kiovec_t aiov;
+	struct iovec aiov;
 	int error;
 
 	if (nbyte > IOSIZE_MAX)
@@ -613,9 +613,6 @@ dofilewrite(struct thread *td, int fd, struct file *fp, struct uio *auio,
 		ktruio = cloneuio(auio);
 #endif
 	cnt = auio->uio_resid;
-	if (fp->f_type == DTYPE_VNODE &&
-	    (fp->f_vnread_flags & FDEVFS_VNODE) == 0)
-		bwillwrite();
 	if ((error = fo_write(fp, auio, td->td_ucred, flags, td))) {
 		if (auio->uio_resid != cnt && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -1993,11 +1990,10 @@ kern_posix_error(struct thread *td, int error)
 }
 // CHERI CHANGES START
 // {
-//   "updated": 20181114,
+//   "updated": 20191025,
 //   "target_type": "kernel",
 //   "changes": [
 //     "iovec-macros",
-//     "kiovec_t",
 //     "user_capabilities"
 //   ]
 // }

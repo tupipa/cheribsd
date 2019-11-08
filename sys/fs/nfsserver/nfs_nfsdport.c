@@ -110,9 +110,9 @@ static void nfsrv_pnfsremovesetup(struct vnode *, NFSPROC_T *, struct vnode **,
     int *, char *, fhandle_t *);
 static void nfsrv_pnfsremove(struct vnode **, int, char *, fhandle_t *,
     NFSPROC_T *);
-static int nfsrv_proxyds(struct nfsrv_descript *, struct vnode *, off_t, int,
-    struct ucred *, struct thread *, int, struct mbuf **, char *,
-    struct mbuf **, struct nfsvattr *, struct acl *);
+static int nfsrv_proxyds(struct vnode *, off_t, int, struct ucred *,
+    struct thread *, int, struct mbuf **, char *, struct mbuf **,
+    struct nfsvattr *, struct acl *);
 static int nfsrv_setextattr(struct vnode *, struct nfsvattr *, NFSPROC_T *);
 static int nfsrv_readdsrpc(fhandle_t *, off_t, int, struct ucred *,
     NFSPROC_T *, struct nfsmount *, struct mbuf **, struct mbuf **);
@@ -293,7 +293,7 @@ nfsvno_getattr(struct vnode *vp, struct nfsvattr *nvap,
 	    NFSISSET_ATTRBIT(attrbitp, NFSATTRBIT_SIZE) ||
 	    NFSISSET_ATTRBIT(attrbitp, NFSATTRBIT_TIMEACCESS) ||
 	    NFSISSET_ATTRBIT(attrbitp, NFSATTRBIT_TIMEMODIFY))) {
-		error = nfsrv_proxyds(nd, vp, 0, 0, nd->nd_cred, p,
+		error = nfsrv_proxyds(vp, 0, 0, nd->nd_cred, p,
 		    NFSPROC_GETATTR, NULL, NULL, NULL, &na, NULL);
 		if (error == 0)
 			gotattr = 1;
@@ -476,7 +476,7 @@ nfsvno_setattr(struct vnode *vp, struct nfsvattr *nvap, struct ucred *cred,
 	    nvap->na_vattr.va_atime.tv_sec != VNOVAL ||
 	    nvap->na_vattr.va_mtime.tv_sec != VNOVAL)) {
 		/* For a pNFS server, set the attributes on the DS file. */
-		error = nfsrv_proxyds(NULL, vp, 0, 0, cred, p, NFSPROC_SETATTR,
+		error = nfsrv_proxyds(vp, 0, 0, cred, p, NFSPROC_SETATTR,
 		    NULL, NULL, NULL, nvap, NULL);
 		if (error == ENOENT)
 			error = 0;
@@ -495,7 +495,7 @@ nfsvno_namei(struct nfsrv_descript *nd, struct nameidata *ndp,
 {
 	struct componentname *cnp = &ndp->ni_cnd;
 	int i;
-	kiovec_t aiov;
+	struct iovec aiov;
 	struct uio auio;
 	int lockleaf = (cnp->cn_flags & LOCKLEAF) != 0, linklen;
 	int error = 0;
@@ -718,8 +718,8 @@ int
 nfsvno_readlink(struct vnode *vp, struct ucred *cred, struct thread *p,
     struct mbuf **mpp, struct mbuf **mpendp, int *lenp)
 {
-	kiovec_t iv[(NFS_MAXPATHLEN+MLEN-1)/MLEN];
-	kiovec_t *ivp = iv;
+	struct iovec iv[(NFS_MAXPATHLEN+MLEN-1)/MLEN];
+	struct iovec *ivp = iv;
 	struct uio io, *uiop = &io;
 	struct mbuf *mp, *mp2 = NULL, *mp3 = NULL;
 	int i, len, tlen, error = 0;
@@ -782,8 +782,8 @@ nfsvno_read(struct vnode *vp, off_t off, int cnt, struct ucred *cred,
 {
 	struct mbuf *m;
 	int i;
-	kiovec_t *iv;
-	kiovec_t *iv2;
+	struct iovec *iv;
+	struct iovec *iv2;
 	int error = 0, len, left, siz, tlen, ioflag = 0;
 	struct mbuf *m2 = NULL, *m3;
 	struct uio io, *uiop = &io;
@@ -793,7 +793,7 @@ nfsvno_read(struct vnode *vp, off_t off, int cnt, struct ucred *cred,
 	 * Attempt to read from a DS file. A return of ENOENT implies
 	 * there is no DS file to read.
 	 */
-	error = nfsrv_proxyds(NULL, vp, off, cnt, cred, p, NFSPROC_READDS, mpp,
+	error = nfsrv_proxyds(vp, off, cnt, cred, p, NFSPROC_READDS, mpp,
 	    NULL, mpendp, NULL, NULL);
 	if (error != ENOENT)
 		return (error);
@@ -817,7 +817,7 @@ nfsvno_read(struct vnode *vp, off_t off, int cnt, struct ucred *cred,
 			m3 = m;
 		m2 = m;
 	}
-	iv = malloc(i * sizeof (kiovec_t), M_TEMP, M_WAITOK);
+	iv = malloc(i * sizeof (struct iovec), M_TEMP, M_WAITOK);
 	uiop->uio_iov = iv2 = iv;
 	m = m3;
 	left = len;
@@ -876,9 +876,9 @@ int
 nfsvno_write(struct vnode *vp, off_t off, int retlen, int cnt, int *stable,
     struct mbuf *mp, char *cp, struct ucred *cred, struct thread *p)
 {
-	kiovec_t *ivp;
+	struct iovec *ivp;
 	int i, len;
-	kiovec_t *iv;
+	struct iovec *iv;
 	int ioflags, error;
 	struct uio io, *uiop = &io;
 	struct nfsheur *nh;
@@ -887,14 +887,14 @@ nfsvno_write(struct vnode *vp, off_t off, int retlen, int cnt, int *stable,
 	 * Attempt to write to a DS file. A return of ENOENT implies
 	 * there is no DS file to write.
 	 */
-	error = nfsrv_proxyds(NULL, vp, off, retlen, cred, p, NFSPROC_WRITEDS,
+	error = nfsrv_proxyds(vp, off, retlen, cred, p, NFSPROC_WRITEDS,
 	    &mp, cp, NULL, NULL, NULL);
 	if (error != ENOENT) {
 		*stable = NFSWRITE_FILESYNC;
 		return (error);
 	}
 
-	ivp = malloc(cnt * sizeof (kiovec_t), M_TEMP, M_WAITOK);
+	ivp = malloc(cnt * sizeof (struct iovec), M_TEMP, M_WAITOK);
 	uiop->uio_iov = iv = ivp;
 	uiop->uio_iovcnt = cnt;
 	i = mtod(mp, caddr_t) + mp->m_len - cp;
@@ -1492,8 +1492,7 @@ nfsvno_fsync(struct vnode *vp, u_int64_t off, int cnt, struct ucred *cred,
 		/*
 		 * Give up and do the whole thing
 		 */
-		if (vp->v_object &&
-		   (vp->v_object->flags & OBJ_MIGHTBEDIRTY)) {
+		if (vp->v_object && vm_object_mightbedirty(vp->v_object)) {
 			VM_OBJECT_WLOCK(vp->v_object);
 			vm_object_page_clean(vp->v_object, 0, 0, OBJPC_SYNC);
 			VM_OBJECT_WUNLOCK(vp->v_object);
@@ -1523,8 +1522,7 @@ nfsvno_fsync(struct vnode *vp, u_int64_t off, int cnt, struct ucred *cred,
 		}
 		lblkno = off / iosize;
 
-		if (vp->v_object &&
-		   (vp->v_object->flags & OBJ_MIGHTBEDIRTY)) {
+		if (vp->v_object && vm_object_mightbedirty(vp->v_object)) {
 			VM_OBJECT_WLOCK(vp->v_object);
 			vm_object_page_clean(vp->v_object, off, off + cnt,
 			    OBJPC_SYNC);
@@ -1821,7 +1819,7 @@ nfsrvd_readdir(struct nfsrv_descript *nd, int isdgram,
 	u_int64_t off, toff, verf __unused;
 	u_long *cookies = NULL, *cookiep;
 	struct uio io;
-	kiovec_t iv;
+	struct iovec iv;
 	int is_ufs;
 	struct thread *p = curthread;
 
@@ -2071,7 +2069,7 @@ nfsrvd_readdirplus(struct nfsrv_descript *nd, int isdgram,
 	u_long *cookies = NULL, *cookiep;
 	nfsattrbit_t attrbits, rderrbits, savbits;
 	struct uio io;
-	kiovec_t iv;
+	struct iovec iv;
 	struct componentname cn;
 	int at_root, is_ufs, is_zfs, needs_unbusy, supports_nfsv4acls;
 	struct mount *mp, *new_mp;
@@ -4369,7 +4367,7 @@ nfsrv_updatemdsattr(struct vnode *vp, struct nfsvattr *nap, NFSPROC_T *p)
 
 	/* Do this as root so that it won't fail with EACCES. */
 	tcred = newnfs_getcred();
-	error = nfsrv_proxyds(NULL, vp, 0, 0, tcred, p, NFSPROC_LAYOUTRETURN,
+	error = nfsrv_proxyds(vp, 0, 0, tcred, p, NFSPROC_LAYOUTRETURN,
 	    NULL, NULL, NULL, nap, NULL);
 	NFSFREECRED(tcred);
 	return (error);
@@ -4384,15 +4382,15 @@ nfsrv_dssetacl(struct vnode *vp, struct acl *aclp, struct ucred *cred,
 {
 	int error;
 
-	error = nfsrv_proxyds(NULL, vp, 0, 0, cred, p, NFSPROC_SETACL,
+	error = nfsrv_proxyds(vp, 0, 0, cred, p, NFSPROC_SETACL,
 	    NULL, NULL, NULL, NULL, aclp);
 	return (error);
 }
 
 static int
-nfsrv_proxyds(struct nfsrv_descript *nd, struct vnode *vp, off_t off, int cnt,
-    struct ucred *cred, struct thread *p, int ioproc, struct mbuf **mpp,
-    char *cp, struct mbuf **mpp2, struct nfsvattr *nap, struct acl *aclp)
+nfsrv_proxyds(struct vnode *vp, off_t off, int cnt, struct ucred *cred,
+    struct thread *p, int ioproc, struct mbuf **mpp, char *cp,
+    struct mbuf **mpp2, struct nfsvattr *nap, struct acl *aclp)
 {
 	struct nfsmount *nmp[NFSDEV_MAXMIRRORS], *failnmp;
 	fhandle_t fh[NFSDEV_MAXMIRRORS];
@@ -4440,7 +4438,7 @@ nfsrv_proxyds(struct nfsrv_descript *nd, struct vnode *vp, off_t off, int cnt,
 			 * delegation issued to a client for the file.
 			 */
 			if (nfsrv_pnfsgetdsattr == 0 ||
-			    nfsrv_checkdsattr(nd, vp, p) == 0) {
+			    nfsrv_checkdsattr(vp, p) == 0) {
 				free(buf, M_TEMP);
 				return (error);
 			}
@@ -5861,11 +5859,10 @@ MODULE_DEPEND(nfsd, nfssvc, 1, 1, 1);
 
 // CHERI CHANGES START
 // {
-//   "updated": 20181127,
+//   "updated": 20191025,
 //   "target_type": "kernel",
 //   "changes": [
-//     "iovec-macros",
-//     "kiovec_t"
+//     "iovec-macros"
 //   ]
 // }
 // CHERI CHANGES END

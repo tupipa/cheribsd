@@ -8,7 +8,8 @@ PROG=	makefs
 
 CFLAGS+=-I${SRCDIR}
 
-SRCS=	cd9660.c ffs.c \
+SRCS=	cd9660.c \
+	ffs.c \
 	makefs.c \
 	mtree.c \
 	walk.c
@@ -18,6 +19,14 @@ WARNS?=	2
 
 .include "${SRCDIR}/cd9660/Makefile.inc"
 .include "${SRCDIR}/ffs/Makefile.inc"
+.ifdef BOOTSTRAPPING
+# Bootstrapping msdosfs is really awkward since it pulls in tons of kernel
+# headers and uses ioctls that might not be available on Linux/macOS
+CFLAGS+=	-DWITHOUT_MSDOSFS
+.else
+.include "${SRCDIR}/msdos/Makefile.inc"
+SRCS+=	msdos.c
+.endif
 
 CFLAGS+=-DHAVE_STRUCT_STAT_ST_FLAGS=1
 

@@ -29,6 +29,7 @@
  */
 
 #include "opt_acpi.h"
+#include "opt_ddb.h"
 #include "opt_kstack_pages.h"
 #include "opt_platform.h"
 
@@ -44,6 +45,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/mutex.h>
+#include <sys/pcpu.h>
 #include <sys/proc.h>
 #include <sys/sched.h>
 #include <sys/smp.h>
@@ -54,6 +56,7 @@ __FBSDID("$FreeBSD$");
 #include <vm/vm_kern.h>
 
 #include <machine/machdep.h>
+#include <machine/debug_monitor.h>
 #include <machine/intr.h>
 #include <machine/smp.h>
 #ifdef VFP
@@ -111,8 +114,6 @@ static struct intr_ipi ipi_sources[INTR_IPI_COUNT];
 static struct intr_ipi *intr_ipi_lookup(u_int);
 static void intr_pic_ipi_setup(u_int, const char *, intr_ipi_handler_t *,
     void *);
-
-extern struct pcpu __pcpu[];
 
 static void ipi_ast(void *);
 static void ipi_hardclock(void *);
@@ -353,6 +354,10 @@ ipi_stop(void *dummy __unused)
 	/* Wait for restart */
 	while (!CPU_ISSET(cpu, &started_cpus))
 		cpu_spinwait();
+
+#ifdef DDB
+	dbg_register_sync(NULL);
+#endif
 
 	CPU_CLR_ATOMIC(cpu, &started_cpus);
 	CPU_CLR_ATOMIC(cpu, &stopped_cpus);

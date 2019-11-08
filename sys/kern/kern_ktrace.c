@@ -1306,7 +1306,7 @@ ktr_writerequest(struct thread *td, struct ktr_request *req)
 	struct proc *p;
 	struct ucred *cred;
 	struct uio auio;
-	kiovec_t aiov[3];
+	struct iovec aiov[3];
 	struct mount *mp;
 	int datalen, buflen, vrele_count;
 	int error;
@@ -1444,11 +1444,10 @@ ktrcanset(struct thread *td, struct proc *targetp)
 #endif /* KTRACE */
 // CHERI CHANGES START
 // {
-//   "updated": 20181114,
+//   "updated": 20191025,
 //   "target_type": "kernel",
 //   "changes": [
 //     "iovec-macros",
-//     "kiovec_t",
 //     "support",
 //     "user_capabilities"
 //   ]

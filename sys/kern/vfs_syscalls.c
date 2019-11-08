@@ -253,7 +253,6 @@ statfs_scale_blocks(struct statfs *sf, long max_size)
 static int
 kern_do_statfs(struct thread *td, struct mount *mp, struct statfs *buf)
 {
-	struct statfs *sp;
 	int error;
 
 	if (mp == NULL)
@@ -267,17 +266,9 @@ kern_do_statfs(struct thread *td, struct mount *mp, struct statfs *buf)
 	if (error != 0)
 		goto out;
 #endif
-	/*
-	 * Set these in case the underlying filesystem fails to do so.
-	 */
-	sp = &mp->mnt_stat;
-	sp->f_version = STATFS_VERSION;
-	sp->f_namemax = NAME_MAX;
-	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	error = VFS_STATFS(mp, sp);
+	error = VFS_STATFS(mp, buf);
 	if (error != 0)
 		goto out;
-	*buf = *sp;
 	if (priv_check(td, PRIV_VFS_GENERATION)) {
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
 		prison_enforce_statfs(td->td_ucred, mp, buf);
@@ -507,13 +498,6 @@ restart:
 		}
 		if (sfsp != NULL && count < maxcount) {
 			sp = &mp->mnt_stat;
-			/*
-			 * Set these in case the underlying filesystem
-			 * fails to do so.
-			 */
-			sp->f_version = STATFS_VERSION;
-			sp->f_namemax = NAME_MAX;
-			sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 			/*
 			 * If MNT_NOWAIT is specified, do not refresh
 			 * the fsstat cache.
@@ -2636,7 +2620,7 @@ static int
 kern_readlink_vp(struct vnode *vp, char * __capability buf,
     enum uio_seg bufseg, size_t count, struct thread *td)
 {
-	kiovec_t aiov;
+	struct iovec aiov;
 	struct uio auio;
 	int error;
 
@@ -4129,7 +4113,7 @@ kern_getdirentries(struct thread *td, int fd, char * __capability buf,
 	struct vnode *vp;
 	struct file *fp;
 	struct uio auio;
-	kiovec_t aiov;
+	struct iovec aiov;
 	off_t loff;
 	int error, eofflag;
 	off_t foffset;
@@ -4688,7 +4672,6 @@ user_fhstatfs(struct thread *td, const struct fhandle * __capability u_fhp,
 int
 kern_fhstatfs(struct thread *td, fhandle_t fh, struct statfs *buf)
 {
-	struct statfs *sp;
 	struct mount *mp;
 	struct vnode *vp;
 	int error;
@@ -4712,16 +4695,7 @@ kern_fhstatfs(struct thread *td, fhandle_t fh, struct statfs *buf)
 	if (error != 0)
 		goto out;
 #endif
-	/*
-	 * Set these in case the underlying filesystem fails to do so.
-	 */
-	sp = &mp->mnt_stat;
-	sp->f_version = STATFS_VERSION;
-	sp->f_namemax = NAME_MAX;
-	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	error = VFS_STATFS(mp, sp);
-	if (error == 0)
-		*buf = *sp;
+	error = VFS_STATFS(mp, buf);
 out:
 	vfs_unbusy(mp);
 	return (error);

@@ -161,6 +161,7 @@ chkdq(struct inode *ip, ufs2_daddr_t change, struct ucred *cred, int flags)
 	struct vnode *vp = ITOV(ip);
 	int i, error, warn, do_check;
 
+	MPASS(cred != NOCRED || (flags & FORCE) != 0);
 	/*
 	 * Disk quotas must be turned off for system files.  Currently
 	 * snapshot and quota files.
@@ -313,6 +314,7 @@ chkiq(struct inode *ip, int change, struct ucred *cred, int flags)
 	struct dquot *dq;
 	int i, error, warn, do_check;
 
+	MPASS(cred != NOCRED || (flags & FORCE) != 0);
 #ifdef DIAGNOSTIC
 	if ((flags & CHOWN) == 0)
 		chkdquot(ip);
@@ -617,7 +619,7 @@ again:
 			MNT_VNODE_FOREACH_ALL_ABORT(mp, mvp);
 			goto again;
 		}
-		if (vp->v_type == VNON || vp->v_writecount == 0) {
+		if (vp->v_type == VNON || vp->v_writecount <= 0) {
 			VOP_UNLOCK(vp, 0);
 			vrele(vp);
 			continue;
@@ -1236,7 +1238,7 @@ static int
 dqopen(struct vnode *vp, struct ufsmount *ump, int type)
 {
 	struct dqhdr64 dqh;
-	kiovec_t aiov;
+	struct iovec aiov;
 	struct uio auio;
 	int error;
 
@@ -1286,7 +1288,7 @@ dqget(struct vnode *vp, u_long id, struct ufsmount *ump, int type,
 	struct dquot *dq, *dq1;
 	struct dqhash *dqh;
 	struct vnode *dqvp;
-	kiovec_t aiov;
+	struct iovec aiov;
 	struct uio auio;
 	int dqvplocked, error;
 
@@ -1559,7 +1561,7 @@ dqsync(struct vnode *vp, struct dquot *dq)
 	uint8_t buf[sizeof(struct dqblk64)];
 	off_t base, recsize;
 	struct vnode *dqvp;
-	kiovec_t aiov;
+	struct iovec aiov;
 	struct uio auio;
 	int error;
 	struct mount *mp;
@@ -1891,11 +1893,10 @@ dqb32_dqb64(const struct dqblk32 *dqb32, struct dqblk64 *dqb64)
 }
 // CHERI CHANGES START
 // {
-//   "updated": 20181114,
+//   "updated": 20191025,
 //   "target_type": "kernel",
 //   "changes": [
 //     "iovec-macros",
-//     "kiovec_t",
 //     "user_capabilities"
 //   ]
 // }
