@@ -111,6 +111,9 @@
 #define	PROT_CHERI_LOCALRET		0
 #endif /* SIGPROT */
 
+/* LLM: variable definition for debugging */
+TRACK_HELLO_VAR_DEFINITION
+
 static const struct cheri_test cheri_tests[] = {
 	/*
 	 * Exercise CHERI functions without an expectation of a signal.
@@ -1043,7 +1046,7 @@ static const struct cheri_test cheri_tests[] = {
 	  .ct_check_xfail = xfail_swap_required},
 
 #ifdef CHERI_LIBCHERI_TESTS
-#if 0
+#if 1
 	/*
 	 * Simple CCall/CReturn tests that sometimes generate signals.
 	 */
@@ -2271,6 +2274,7 @@ pass:
 	close(pipefd_stdout[0]);
 	xo_close_instance("test");
 	xo_flush();
+	//BUFFER_WRITE_IM;
 	return;
 
 fail:
@@ -2296,6 +2300,7 @@ fail:
 	xo_flush();
 	close(pipefd_stdin[1]);
 	close(pipefd_stdout[0]);
+	//BUFFER_WRITE_IM;
 }
 
 static void
@@ -2469,7 +2474,7 @@ main(int argc, char *argv[])
 	cheri_xfailed_tests = sl_init();
 	/* Run the actual tests. */
 #ifdef CHERI_LIBCHERI_TESTS
-#if 0
+#if 1
 	cheritest_ccall_setup();
 #endif
 	if (!unsandboxed_tests_only) {

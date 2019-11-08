@@ -130,6 +130,7 @@ void
 cheritest_ccall_setup(void)
 {
 
+	BUFFER_WRITE("begin.");
 	/*
 	 * Create sealing, sealed code, and sealed data capabilities for each
 	 * of the three classes used in these tests.
@@ -155,6 +156,8 @@ cheritest_ccall_setup(void)
 	sandbox_dli_creturn_datacap =
 	    cheri_seal(datacap_create(&sandbox_dli_creturn,
 	    &sandbox_dli_creturn_end), sandbox_dli_creturn_sealcap);
+
+	BUFFER_WRITE("done.");
 }
 
 /*

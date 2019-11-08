@@ -89,6 +89,7 @@ cheritest_failure_errx(const char *msg, ...)
 	va_start(ap, msg);
 	vcheritest_failure_errx(msg, ap);
 	va_end(ap);
+	//PRINT_BUFFER_IM;
 	exit(EX_SOFTWARE);
 }
 
@@ -99,6 +100,7 @@ cheritest_failure_err(const char *msg, ...)
 	va_start(ap, msg);
 	vcheritest_failure_err(msg, ap);
 	va_end(ap);
+	//PRINT_BUFFER_IM;
 	exit(EX_SOFTWARE);
 }
 
@@ -106,6 +108,7 @@ void
 cheritest_success(void)
 {
 
+	//PRINT_BUFFER_IM;
 	ccsp->ccs_testresult = TESTRESULT_SUCCESS;
 	exit(0);
 }

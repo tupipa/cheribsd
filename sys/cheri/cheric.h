@@ -110,7 +110,7 @@ cheri_gettop(const void * __capability cap)
 static __always_inline inline bool
 #else
 static __always_inline inline _Bool
-#endif
+#endif /* __cplusplus */
 cheri_is_address_inbounds(const void * __capability cap, vaddr_t addr)
 {
 	return (addr >= cheri_getbase(cap) && addr < cheri_gettop(cap));
@@ -137,7 +137,7 @@ cheri_codeptr(const void *ptr, size_t len)
 #else
 	void * __capability c = cheri_setaddress(cheri_getpcc(),
 	    (register_t)ptr);
-#endif
+#endif /* NOTYET */
 
 	/* Assume CFromPtr without base set, availability of CSetBounds. */
 	return (cheri_csetbounds(c, len));
@@ -190,7 +190,11 @@ cheri_maketype(void * __capability root_type, register_t type)
 	c = root_type;
 	c = cheri_setoffset(c, type);	/* Set type as desired. */
 	c = cheri_csetbounds(c, 1);	/* ISA implies length of 1. */
+#ifdef MAKE_TYPE_WITH_PERM_UNSEAL  // LLM: add perm unseal for userspace
+	c = cheri_andperm(c, CHERI_PERM_GLOBAL | CHERI_PERM_SEAL | CHERI_PERM_UNSEAL); /* Perms. */
+#else
 	c = cheri_andperm(c, CHERI_PERM_GLOBAL | CHERI_PERM_SEAL); /* Perms. */
+#endif // MAKE_TYPE_WITH_PERM_UNSEAL
 	return (c);
 }
 
@@ -220,7 +224,7 @@ cheri_bytes_remaining(const void * __capability cap)
 	})
 #else
 #define	cheri_ptr_to_bounded_cap(ptr) cheri_ptr((ptr), sizeof(*(ptr)))
-#endif
+#endif /* __CHERI_PURE_CAPABILITY__ */
 /*
  * Convert a capability to a pointer. Returns NULL if there are less than
  * min_size accessible bytes remiaing in cap.
@@ -259,7 +263,7 @@ cheri_bytes_remaining(const void * __capability cap)
 
 #define CHERI_FPRINT_PTR(f, ptr)					\
 	fprintf(f, _CHERI_PRINT_PTR_FMT(ptr))
-#endif
+#endif /* __has_feature(capabilities) || defined(__CHERI__) */
 
 /*
  * The cheri_{get,set,clear}_low_pointer_bits() functions work both with and
@@ -312,14 +316,14 @@ __cheri_clear_low_ptr_bits(uintptr_t ptr, size_t bits_mask) {
 #define __check_low_ptr_bits_assignment
 #if defined(_KERNEL) /* Don't pull in assert.h when building the kernel */
 #define _cheri_bits_assert(e) (void)0
-#endif
+#endif /* defined(_KERNEL) */
 #ifdef __check_low_ptr_bits_assignment
 #ifndef _cheri_bits_assert
 #ifndef assert
 #include <assert.h>
-#endif
+#endif /* assert */
 #define _cheri_bits_assert(e) assert(e)
-#endif
+#endif /* _cheri_bits_assert */
 #define __runtime_assert_sensible_low_bits(bits)                               \
   __extension__({                                                              \
     _cheri_bits_assert(bits < 32 && "Should only use the low 5 pointer bits"); \
@@ -327,7 +331,7 @@ __cheri_clear_low_ptr_bits(uintptr_t ptr, size_t bits_mask) {
   })
 #else
 #define __runtime_assert_sensible_low_bits(bits) bits
-#endif
+#endif /* __check_low_ptr_bits_assignment */
 #define __static_assert_sensible_low_bits(bits)                                \
   __extension__({                                                              \
     _Static_assert(bits < 32, "Should only use the low 5 pointer bits");       \

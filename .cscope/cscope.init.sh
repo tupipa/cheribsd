@@ -2,9 +2,10 @@
 HOME=$HOME
 
 SRC_ROOT=$HOME/lab/sva/cheri/cheribsd
+#SRC_ROOT=$HOME/cheri/cheribsd
 
 cd / 	
-find  $SRC_ROOT                                                                \
+find  $SRC_ROOT/                                                                \
 	-path "$SRC_ROOT/include/asm-*" ! -path "$SRC_ROOT/include/asm-i386*" -prune -o \
 	-path "$SRC_ROOT/sys/arm*" -prune -o             \
 	-path "$SRC_ROOT/sys/arm64*" -prune -o             \

@@ -291,6 +291,9 @@
     (CHERI_OTYPE_USER_MAX - CHERI_OTYPE_USER_MIN + 1)
 #define	CHERI_SEALCAP_USERSPACE_OFFSET	0x0
 
+/* LLM: sealing type with unseal perm bit set */
+#define MAKE_TYPE_WITH_PERM_UNSEAL
+
 /*
  * Root sealing capability for kernel managed objects.
  */
